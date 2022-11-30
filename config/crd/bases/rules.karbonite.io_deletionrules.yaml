@@ -72,8 +72,6 @@ spec:
           status:
             description: DeletionRuleStatus defines the observed state of DeletionRule
             properties:
-              lastConfigurationHash:
-                type: string
               lastModified:
                 format: date-time
                 type: string

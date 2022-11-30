@@ -55,8 +55,7 @@ type DeletionRuleSpec struct {
 
 // DeletionRuleStatus defines the observed state of DeletionRule
 type DeletionRuleStatus struct {
-	LastModified          metav1.Time `json:"lastModified,omitempty"`
-	LastConfigurationHash string      `json:"lastConfigurationHash,omitempty"`
+	LastModified metav1.Time `json:"lastModified,omitempty"`
 }
 
 func init() {
