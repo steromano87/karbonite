@@ -55,7 +55,7 @@ type DeletionRuleReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	reconcileLog := r.Log.WithValues("rule", req.NamespacedName)
+	reconcileLog := r.Log.WithName("DeletionRuleReconciler").WithValues("rule", req.NamespacedName)
 
 	reconcileLog.Info("Running reconcile loop")
 
@@ -135,6 +135,7 @@ func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, re
 
 	for _, ruleSchedule := range deletionRule.Spec.Schedules {
 		action := schedule.DeletionAction{
+			Log:      r.Log.WithName("DeleteAction"),
 			Matchers: actionMatchers,
 			DryRun:   deletionRule.Spec.DryRun,
 		}

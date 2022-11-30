@@ -135,7 +135,7 @@ func main() {
 	}
 	if err = (&controllers.DeletionRuleReconciler{
 		Client:        mgr.GetClient(),
-		Log:           mgr.GetLogger().WithName("DeletionRuleReconciler"),
+		Log:           mgr.GetLogger(),
 		Scheme:        mgr.GetScheme(),
 		CronScheduler: gocron.NewScheduler(timeZone),
 		CronValidator: cron.NewParser(

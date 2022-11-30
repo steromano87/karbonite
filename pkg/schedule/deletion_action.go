@@ -1,48 +1,88 @@
 package schedule
 
 import (
+	"context"
 	"fmt"
+	"github.com/go-logr/logr"
 	"github.com/steromano87/karbonite/api/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DeletionAction struct {
+	Log      logr.Logger
 	Matchers []v1.Matchers
 	DryRun   bool
 }
 
 func (a DeletionAction) Run(kubeClient client.Client) error {
 	if a.DryRun {
-		ctrl.Log.Info("Dry-running deletion rule. This is a drill!")
+		a.Log.Info("Dry-running deletion rule. This is a drill!")
 	} else {
-		ctrl.Log.Info("Running deletion rule. This is not a drill!!!")
+		a.Log.Info("Running deletion rule. This is not a drill!!!")
 	}
 
+	allMatchingResources, err := a.findMatchingResources(kubeClient)
+	if err != nil {
+		a.Log.Error(err, "Error retrieving matching resources")
+		return err
+	}
+
+	if len(allMatchingResources) > 0 {
+		resourceNames := make([]string, len(allMatchingResources))
+		for index, resource := range allMatchingResources {
+			resourceNames[index] = fmt.Sprintf("%s/%s [%s]",
+				resource.GetNamespace(), resource.GetName(), resource.GetKind())
+		}
+
+		a.Log.Info("The following resources would be deleted",
+			"resource count", len(allMatchingResources),
+			"resource names", resourceNames)
+	} else {
+		a.Log.Info("No matching resource has been found")
+	}
+
+	if !a.DryRun {
+		a.Log.Info("Resource deletion started")
+		err := a.deleteResources(kubeClient, allMatchingResources)
+		if err != nil {
+			return err
+		}
+		a.Log.Info("Resource deletion completed")
+	}
+	return nil
+}
+
+func (a DeletionAction) findMatchingResources(kubeClient client.Client) ([]unstructured.Unstructured, error) {
 	allMatchingResources := make([]unstructured.Unstructured, 0)
 
 	for _, matcher := range a.Matchers {
 		matchingResources, err := matcher.FindMatchingResources(kubeClient)
 		if err != nil {
-			ctrl.Log.Error(err, "Error retrieving matching resources")
+			return nil, err
 		}
 
 		allMatchingResources = append(allMatchingResources, matchingResources...)
 	}
 
-	resourceNames := make([]string, len(allMatchingResources))
-	for index, resource := range allMatchingResources {
-		resourceNames[index] = fmt.Sprintf("%s/%s [%s]",
-			resource.GetNamespace(), resource.GetName(), resource.GetKind())
-	}
+	return allMatchingResources, nil
+}
 
-	if len(allMatchingResources) > 0 {
-		ctrl.Log.Info("The following resources would be deleted",
-			"resource count", len(allMatchingResources),
-			"resource names", resourceNames)
-	} else {
-		ctrl.Log.Info("No matching resource has been found")
+func (a DeletionAction) deleteResources(kubeClient client.Client, targetResources []unstructured.Unstructured) error {
+	for _, targetResource := range targetResources {
+		resourceDescriptor := fmt.Sprintf("%s/%s [%s]",
+			targetResource.GetNamespace(), targetResource.GetName(), targetResource.GetKind())
+
+		deleteOptions := []client.DeleteOption{
+			client.GracePeriodSeconds(30),
+		}
+
+		err := kubeClient.Delete(context.Background(), &targetResource, deleteOptions...)
+		if err != nil {
+			a.Log.Error(err, "Error while deleting resource", "resource", resourceDescriptor)
+			return err
+		}
+		a.Log.Info("Deleted resource", "resource", resourceDescriptor)
 	}
 
 	return nil
