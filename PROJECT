@@ -1,0 +1,38 @@
+domain: karbonite.io
+layout:
+- go.kubebuilder.io/v3
+projectName: karbonite
+repo: github.com/steromano87/karbonite
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: karbonite.io
+  group: rules
+  kind: HibernationRule
+  path: github.com/steromano87/karbonite/api/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: karbonite.io
+  group: rules
+  kind: ThrottlingRule
+  path: github.com/steromano87/karbonite/api/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: karbonite.io
+  group: rules
+  kind: DeletionRule
+  path: github.com/steromano87/karbonite/api/v1
+  version: v1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
+version: "3"

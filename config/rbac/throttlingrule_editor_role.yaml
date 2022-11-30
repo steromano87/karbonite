@@ -1,0 +1,31 @@
+# permissions for end users to edit throttlingrules.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: throttlingrule-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: karbonite
+    app.kubernetes.io/part-of: karbonite
+    app.kubernetes.io/managed-by: kustomize
+  name: throttlingrule-editor-role
+rules:
+- apiGroups:
+  - rules.karbonite.io
+  resources:
+  - throttlingrules
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rules.karbonite.io
+  resources:
+  - throttlingrules/status
+  verbs:
+  - get

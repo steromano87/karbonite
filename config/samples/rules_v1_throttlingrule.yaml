@@ -1,0 +1,12 @@
+apiVersion: rules.karbonite.io/v1
+kind: ThrottlingRule
+metadata:
+  labels:
+    app.kubernetes.io/name: throttlingrule
+    app.kubernetes.io/instance: throttlingrule-sample
+    app.kubernetes.io/part-of: karbonite
+    app.kuberentes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: karbonite
+  name: throttlingrule-sample
+spec:
+  # TODO(user): Add fields here

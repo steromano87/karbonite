@@ -1,0 +1,16 @@
+apiVersion: rules.karbonite.io/v1
+kind: DeletionRule
+metadata:
+  labels:
+    app.kubernetes.io/name: deletionrule
+    app.kubernetes.io/instance: deletionrule-sample
+    app.kubernetes.io/part-of: karbonite
+    app.kuberentes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: karbonite
+  name: deletionrule-sample
+spec:
+  matchers:
+    - resources:
+        - ConfigMap
+  schedules:
+    - "*/1 * * * *"
