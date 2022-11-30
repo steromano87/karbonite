@@ -16,8 +16,8 @@ type Matchers struct {
 	Labels     map[string]string `json:"labels,omitempty"`
 }
 
-func (in *Matchers) FindMatchingResources(kubeClient client.Client, ruleNamespace string) ([]unstructured.Unstructured, error) {
-	namespaces, err := in.findMatchingNamespaces(kubeClient, ruleNamespace)
+func (in *Matchers) FindMatchingResources(kubeClient client.Client) ([]unstructured.Unstructured, error) {
+	namespaces, err := in.findMatchingNamespaces(kubeClient)
 	if err != nil {
 		return nil, err
 	}
@@ -37,12 +37,7 @@ func (in *Matchers) FindMatchingResources(kubeClient client.Client, ruleNamespac
 	return resourceList, nil
 }
 
-func (in *Matchers) findMatchingNamespaces(kubeClient client.Client, ruleNamespace string) ([]string, error) {
-	// Trivial case: if no namespace matcher is defined, fallback to the rule own namespace
-	if len(in.Namespaces) == 0 {
-		return []string{ruleNamespace}, nil
-	}
-
+func (in *Matchers) findMatchingNamespaces(kubeClient client.Client) ([]string, error) {
 	matchedNamespaces := make([]string, 0)
 
 	// Get all namespaces
@@ -99,7 +94,7 @@ func (in *Matchers) findAllMatchingResourcesInNamespaces(kubeClient client.Clien
 	allKnownTypes := kubeClient.Scheme().AllKnownTypes()
 	matchingTypes := make([]schema.GroupVersionKind, 0)
 
-	for gvk, _ := range allKnownTypes {
+	for gvk := range allKnownTypes {
 		for _, regex := range matcherRegexps {
 			// Ensure that the Kind contains the word "List" when filtering
 			if regex.MatchString(gvk.Kind) && listMatcher.MatchString(gvk.Kind) {

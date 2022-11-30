@@ -120,10 +120,22 @@ func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, jo
 
 func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, req ctrl.Request, deletionRule rulesv1.DeletionRule) error {
 	reconcileLog, _ := logr.FromContext(ctx)
+
+	// If no namespace matcher is explicitly given, set it to the origin namespace
+	actionMatchers := make([]rulesv1.Matchers, len(deletionRule.Spec.Matchers))
+	copy(actionMatchers, deletionRule.Spec.Matchers)
+	for index, actionMatcher := range actionMatchers {
+		if len(actionMatcher.Namespaces) == 0 {
+			reconcileLog.Info("No explicit namespace matcher has been set, defaulting to DeletionRule namespace",
+				"namespace", req.Namespace,
+				"matcherIndex", index)
+			actionMatchers[index].Namespaces = []string{req.Namespace}
+		}
+	}
+
 	for _, ruleSchedule := range deletionRule.Spec.Schedules {
 		action := schedule.DeletionAction{
-			Origin:   req.NamespacedName,
-			Matchers: deletionRule.Spec.Matchers,
+			Matchers: actionMatchers,
 			DryRun:   deletionRule.Spec.DryRun,
 		}
 

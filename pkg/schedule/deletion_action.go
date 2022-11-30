@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"github.com/steromano87/karbonite/api/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DeletionAction struct {
-	Origin   types.NamespacedName
 	Matchers []v1.Matchers
 	DryRun   bool
 }
@@ -25,7 +23,7 @@ func (a DeletionAction) Run(kubeClient client.Client) error {
 	allMatchingResources := make([]unstructured.Unstructured, 0)
 
 	for _, matcher := range a.Matchers {
-		matchingResources, err := matcher.FindMatchingResources(kubeClient, a.Origin.Namespace)
+		matchingResources, err := matcher.FindMatchingResources(kubeClient)
 		if err != nil {
 			ctrl.Log.Error(err, "Error retrieving matching resources")
 		}
@@ -39,8 +37,13 @@ func (a DeletionAction) Run(kubeClient client.Client) error {
 			resource.GetNamespace(), resource.GetName(), resource.GetKind())
 	}
 
-	ctrl.Log.Info("The following resources would be deleted",
-		"resource count", len(allMatchingResources),
-		"resource names", resourceNames)
+	if len(allMatchingResources) > 0 {
+		ctrl.Log.Info("The following resources would be deleted",
+			"resource count", len(allMatchingResources),
+			"resource names", resourceNames)
+	} else {
+		ctrl.Log.Info("No matching resource has been found")
+	}
+
 	return nil
 }
