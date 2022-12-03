@@ -20,22 +20,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+//+kubebuilder:object:root=true
 
-// HibernationRuleSpec defines the desired state of HibernationRule
-type HibernationRuleSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of HibernationRule. Edit hibernation_rule.go to remove/update
-	Foo string `json:"foo,omitempty"`
-}
-
-// HibernationRuleStatus defines the observed state of HibernationRule
-type HibernationRuleStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+// HibernationRuleList contains a list of HibernationRule
+type HibernationRuleList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []HibernationRule `json:"items"`
 }
 
 //+kubebuilder:object:root=true
@@ -50,13 +41,24 @@ type HibernationRule struct {
 	Status HibernationRuleStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// HibernationRuleSpec defines the desired state of HibernationRule
+type HibernationRuleSpec struct {
+	//+kubebuilder:default:=true
+	Enabled bool `json:"enabled,omitempty"`
 
-// HibernationRuleList contains a list of HibernationRule
-type HibernationRuleList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []HibernationRule `json:"items"`
+	//+kubebuilder:default:= false
+	DryRun bool `json:"dryRun,omitempty"`
+
+	//+kubebuilder:validation:MinItems:=1
+	Matchers []Matchers `json:"matchers"`
+
+	//+kubebuilder:validation:MinItems:=1
+	Schedules []ReentrantSchedule `json:"schedules"`
+}
+
+// HibernationRuleStatus defines the observed state of HibernationRule
+type HibernationRuleStatus struct {
+	LastModified metav1.Time `json:"lastModified,omitempty"`
 }
 
 func init() {
