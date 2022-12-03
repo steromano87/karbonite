@@ -77,9 +77,14 @@ func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// Add the deletion schedules
-	err = r.scheduleDeletionActions(logr.NewContext(ctx, reconcileLog), req, deletionRule)
-	if err != nil {
-		return ctrl.Result{}, err
+	if deletionRule.Spec.Enabled {
+		reconcileLog.Info("Deletion rule is enabled, adding deletion cronjobs")
+		err = r.scheduleDeletionActions(logr.NewContext(ctx, reconcileLog), req, deletionRule)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	} else {
+		reconcileLog.Info("Deletion rule is disable, skipping")
 	}
 
 	// Update rule by setting lastModified field

@@ -38,6 +38,9 @@ spec:
               dryRun:
                 default: false
                 type: boolean
+              enabled:
+                default: true
+                type: boolean
               matchers:
                 items:
                   properties:

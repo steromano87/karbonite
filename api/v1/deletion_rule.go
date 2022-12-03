@@ -43,7 +43,10 @@ type DeletionRule struct {
 
 // DeletionRuleSpec defines the desired state of DeletionRule
 type DeletionRuleSpec struct {
-	//+kubebuilder:default:= false
+	//+kubebuilder:default:=true
+	Enabled bool `json:"enabled,omitempty"`
+
+	//+kubebuilder:default:=false
 	DryRun bool `json:"dryRun,omitempty"`
 
 	//+kubebuilder:validation:MinItems:=1
