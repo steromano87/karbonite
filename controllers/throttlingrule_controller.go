@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -56,5 +57,9 @@ func (r *ThrottlingRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *ThrottlingRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rulesv1.ThrottlingRule{}).
+		WithOptions(controller.Options{
+			MaxConcurrentReconciles: 1,
+		}).
+		WithEventFilter(throttlingRuleIgnorePredicate()).
 		Complete(r)
 }
