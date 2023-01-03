@@ -12,7 +12,7 @@ metadata:
   name: throttlingrule-editor-role
 rules:
 - apiGroups:
-  - rules.karbonite.io
+  - karbonite.io
   resources:
   - throttlingrules
   verbs:
@@ -24,7 +24,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - rules.karbonite.io
+  - karbonite.io
   resources:
   - throttlingrules/status
   verbs:

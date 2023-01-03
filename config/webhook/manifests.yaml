@@ -16,7 +16,7 @@ webhooks:
   name: mdeletionrule.kb.io
   rules:
   - apiGroups:
-    - rules.karbonite.io
+    - karbonite.io
     apiVersions:
     - v1
     operations:
@@ -43,7 +43,7 @@ webhooks:
   name: vdeletionrule.kb.io
   rules:
   - apiGroups:
-    - rules.karbonite.io
+    - karbonite.io
     apiVersions:
     - v1
     operations:

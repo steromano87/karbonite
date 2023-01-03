@@ -5,20 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.2
   creationTimestamp: null
-  name: hibernationrules.rules.karbonite.io
+  name: throttlingrules.karbonite.io
 spec:
-  group: rules.karbonite.io
+  group: karbonite.io
   names:
-    kind: HibernationRule
-    listKind: HibernationRuleList
-    plural: hibernationrules
-    singular: hibernationrule
+    kind: ThrottlingRule
+    listKind: ThrottlingRuleList
+    plural: throttlingrules
+    singular: throttlingrule
   scope: Namespaced
   versions:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: HibernationRule is the Schema for the hibernationrules API
+        description: ThrottlingRule is the Schema for the throttlingrules API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,7 +33,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: HibernationRuleSpec defines the desired state of HibernationRule
+            description: ThrottlingRuleSpec defines the desired state of ThrottlingRule
             properties:
               dryRun:
                 default: false
@@ -81,7 +81,7 @@ spec:
             - schedules
             type: object
           status:
-            description: HibernationRuleStatus defines the observed state of HibernationRule
+            description: ThrottlingRuleStatus defines the observed state of ThrottlingRule
             properties:
               lastModified:
                 format: date-time

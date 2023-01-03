@@ -12,7 +12,7 @@ metadata:
   name: hibernationrule-editor-role
 rules:
 - apiGroups:
-  - rules.karbonite.io
+  - karbonite.io
   resources:
   - hibernationrules
   verbs:
@@ -24,7 +24,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - rules.karbonite.io
+  - karbonite.io
   resources:
   - hibernationrules/status
   verbs:

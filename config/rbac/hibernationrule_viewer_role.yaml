@@ -12,7 +12,7 @@ metadata:
   name: hibernationrule-viewer-role
 rules:
 - apiGroups:
-  - rules.karbonite.io
+  - karbonite.io
   resources:
   - hibernationrules
   verbs:
@@ -20,7 +20,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - rules.karbonite.io
+  - karbonite.io
   resources:
   - hibernationrules/status
   verbs:

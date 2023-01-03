@@ -31,9 +31,9 @@ type ThrottlingRuleReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=rules.karbonite.io,resources=throttlingrules,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=rules.karbonite.io,resources=throttlingrules/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=rules.karbonite.io,resources=throttlingrules/finalizers,verbs=update
+//+kubebuilder:rbac:groups=karbonite.io,resources=throttlingrules,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=karbonite.io,resources=throttlingrules/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=karbonite.io,resources=throttlingrules/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

@@ -1,4 +1,4 @@
-apiVersion: rules.karbonite.io/v1
+apiVersion: karbonite.io/v1
 kind: HibernationRule
 metadata:
   labels:
