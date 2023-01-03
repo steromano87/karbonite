@@ -20,22 +20,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+//+kubebuilder:object:root=true
 
-// ThrottlingRuleSpec defines the desired state of ThrottlingRule
-type ThrottlingRuleSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of ThrottlingRule. Edit throttling_rule.go to remove/update
-	Foo string `json:"foo,omitempty"`
-}
-
-// ThrottlingRuleStatus defines the observed state of ThrottlingRule
-type ThrottlingRuleStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+// ThrottlingRuleList contains a list of ThrottlingRule
+type ThrottlingRuleList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []ThrottlingRule `json:"items"`
 }
 
 //+kubebuilder:object:root=true
@@ -50,13 +41,24 @@ type ThrottlingRule struct {
 	Status ThrottlingRuleStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// ThrottlingRuleSpec defines the desired state of ThrottlingRule
+type ThrottlingRuleSpec struct {
+	//+kubebuilder:default:=true
+	Enabled bool `json:"enabled,omitempty"`
 
-// ThrottlingRuleList contains a list of ThrottlingRule
-type ThrottlingRuleList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ThrottlingRule `json:"items"`
+	//+kubebuilder:default:= false
+	DryRun bool `json:"dryRun,omitempty"`
+
+	//+kubebuilder:validation:MinItems:=1
+	Matchers []Matchers `json:"matchers"`
+
+	//+kubebuilder:validation:MinItems:=1
+	Schedules []ReentrantSchedule `json:"schedules"`
+}
+
+// ThrottlingRuleStatus defines the observed state of ThrottlingRule
+type ThrottlingRuleStatus struct {
+	LastModified metav1.Time `json:"lastModified,omitempty"`
 }
 
 func init() {

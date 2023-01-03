@@ -35,13 +35,57 @@ spec:
           spec:
             description: ThrottlingRuleSpec defines the desired state of ThrottlingRule
             properties:
-              foo:
-                description: Foo is an example field of ThrottlingRule. Edit throttling_rule.go
-                  to remove/update
-                type: string
+              dryRun:
+                default: false
+                type: boolean
+              enabled:
+                default: true
+                type: boolean
+              matchers:
+                items:
+                  properties:
+                    labels:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    names:
+                      items:
+                        type: string
+                      type: array
+                    namespaces:
+                      items:
+                        type: string
+                      type: array
+                    resources:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                minItems: 1
+                type: array
+              schedules:
+                items:
+                  properties:
+                    end:
+                      type: string
+                    start:
+                      description: 'TODO: write regex validator to cover all the cases'
+                      type: string
+                  required:
+                  - start
+                  type: object
+                minItems: 1
+                type: array
+            required:
+            - matchers
+            - schedules
             type: object
           status:
             description: ThrottlingRuleStatus defines the observed state of ThrottlingRule
+            properties:
+              lastModified:
+                format: date-time
+                type: string
             type: object
         type: object
     served: true
