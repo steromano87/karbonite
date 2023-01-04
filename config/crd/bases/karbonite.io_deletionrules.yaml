@@ -15,7 +15,20 @@ spec:
     singular: deletionrule
   scope: Namespaced
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - description: Whether the DeletionRule is enforced or not
+      jsonPath: .spec.enabled
+      name: Enabled
+      type: boolean
+    - description: The active schedules
+      jsonPath: .spec.schedules[*]
+      name: Schedules
+      priority: 1
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
     schema:
       openAPIV3Schema:
         description: DeletionRule is the Schema for the deletionrules API

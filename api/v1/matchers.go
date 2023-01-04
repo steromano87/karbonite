@@ -9,6 +9,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// TODO: change the name of the struct to Selector, see https://observability.thomasriley.co.uk/prometheus/configuring-prometheus/using-service-monitors/
+
 type Matchers struct {
 	Namespaces []string          `json:"namespaces,omitempty"`
 	Resources  []string          `json:"resources,omitempty"`

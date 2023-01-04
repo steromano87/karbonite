@@ -31,6 +31,10 @@ type ThrottlingRuleList struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Enabled",type="boolean",JSONPath=".spec.enabled",description="Whether the ThrottlingRule is enforced or not"
+//+kubebuilder:printcolumn:name="Active",type="boolean",JSONPath=".spec.active",description="Whether a re-entrant schedule is defined"
+//+kubebuilder:printcolumn:name="Schedules",type="string",priority=1,JSONPath=".spec.schedules[*]",description="The active schedules"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ThrottlingRule is the Schema for the throttlingrules API
 type ThrottlingRule struct {
@@ -46,6 +50,9 @@ type ThrottlingRuleSpec struct {
 	//+kubebuilder:default:=true
 	Enabled bool `json:"enabled,omitempty"`
 
+	//+kubebuilder:default:=false
+	Active bool `json:"active,omitempty"`
+
 	//+kubebuilder:default:= false
 	DryRun bool `json:"dryRun,omitempty"`
 
@@ -53,7 +60,14 @@ type ThrottlingRuleSpec struct {
 	Matchers []Matchers `json:"matchers"`
 
 	//+kubebuilder:validation:MinItems:=1
-	Schedules []ReentrantSchedule `json:"schedules"`
+	Schedules []ThrottlingSchedule `json:"schedules"`
+}
+
+type ThrottlingSchedule struct {
+	ReentrantSchedule `json:",inline"`
+
+	//+kubebuilder:validation:minValue:=0
+	DesiredReplicas int `json:"desiredReplicas"`
 }
 
 // ThrottlingRuleStatus defines the observed state of ThrottlingRule

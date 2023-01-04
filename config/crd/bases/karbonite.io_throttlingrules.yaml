@@ -15,7 +15,24 @@ spec:
     singular: throttlingrule
   scope: Namespaced
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - description: Whether the ThrottlingRule is enforced or not
+      jsonPath: .spec.enabled
+      name: Enabled
+      type: boolean
+    - description: Whether a re-entrant schedule is defined
+      jsonPath: .spec.active
+      name: Active
+      type: boolean
+    - description: The active schedules
+      jsonPath: .spec.schedules[*]
+      name: Schedules
+      priority: 1
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
     schema:
       openAPIV3Schema:
         description: ThrottlingRule is the Schema for the throttlingrules API
@@ -35,6 +52,9 @@ spec:
           spec:
             description: ThrottlingRuleSpec defines the desired state of ThrottlingRule
             properties:
+              active:
+                default: false
+                type: boolean
               dryRun:
                 default: false
                 type: boolean
@@ -66,12 +86,15 @@ spec:
               schedules:
                 items:
                   properties:
+                    desiredReplicas:
+                      type: integer
                     end:
                       type: string
                     start:
                       description: 'TODO: write regex validator to cover all the cases'
                       type: string
                   required:
+                  - desiredReplicas
                   - start
                   type: object
                 minItems: 1

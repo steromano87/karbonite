@@ -9,4 +9,9 @@ metadata:
     app.kubernetes.io/created-by: karbonite
   name: throttlingrule-sample
 spec:
-  # TODO(user): Add fields here
+  matchers:
+    - resources:
+        - Deployment
+  schedules:
+    - start: "*/1 * * * *"
+      desiredReplicas: 0
