@@ -21,7 +21,7 @@ spec:
       name: Enabled
       type: boolean
     - description: Whether a re-entrant schedule is defined
-      jsonPath: .spec.active
+      jsonPath: .status.active
       name: Active
       type: boolean
     - description: The active schedules
@@ -52,9 +52,6 @@ spec:
           spec:
             description: ThrottlingRuleSpec defines the desired state of ThrottlingRule
             properties:
-              active:
-                default: false
-                type: boolean
               dryRun:
                 default: false
                 type: boolean
@@ -106,9 +103,9 @@ spec:
           status:
             description: ThrottlingRuleStatus defines the observed state of ThrottlingRule
             properties:
-              lastModified:
-                format: date-time
-                type: string
+              active:
+                default: false
+                type: boolean
             type: object
         type: object
     served: true

@@ -32,7 +32,7 @@ type ThrottlingRuleList struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Enabled",type="boolean",JSONPath=".spec.enabled",description="Whether the ThrottlingRule is enforced or not"
-//+kubebuilder:printcolumn:name="Active",type="boolean",JSONPath=".spec.active",description="Whether a re-entrant schedule is defined"
+//+kubebuilder:printcolumn:name="Active",type="boolean",JSONPath=".status.active",description="Whether a re-entrant schedule is defined"
 //+kubebuilder:printcolumn:name="Schedules",type="string",priority=1,JSONPath=".spec.schedules[*]",description="The active schedules"
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
@@ -49,9 +49,6 @@ type ThrottlingRule struct {
 type ThrottlingRuleSpec struct {
 	//+kubebuilder:default:=true
 	Enabled bool `json:"enabled,omitempty"`
-
-	//+kubebuilder:default:=false
-	Active bool `json:"active,omitempty"`
 
 	//+kubebuilder:default:= false
 	DryRun bool `json:"dryRun,omitempty"`
@@ -72,7 +69,8 @@ type ThrottlingSchedule struct {
 
 // ThrottlingRuleStatus defines the observed state of ThrottlingRule
 type ThrottlingRuleStatus struct {
-	LastModified metav1.Time `json:"lastModified,omitempty"`
+	//+kubebuilder:default:=false
+	Active bool `json:"active,omitempty"`
 }
 
 func init() {
