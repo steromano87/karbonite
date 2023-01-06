@@ -54,36 +54,33 @@ spec:
               enabled:
                 default: true
                 type: boolean
-              matchers:
-                items:
-                  properties:
-                    labels:
-                      additionalProperties:
-                        type: string
-                      type: object
-                    names:
-                      items:
-                        type: string
-                      type: array
-                    namespaces:
-                      items:
-                        type: string
-                      type: array
-                    resources:
-                      items:
-                        type: string
-                      type: array
-                  type: object
-                minItems: 1
-                type: array
               schedules:
                 items:
                   type: string
                 minItems: 1
                 type: array
+              selector:
+                properties:
+                  matchKinds:
+                    items:
+                      type: string
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  matchNames:
+                    items:
+                      type: string
+                    type: array
+                  matchNamespaces:
+                    items:
+                      type: string
+                    type: array
+                type: object
             required:
-            - matchers
             - schedules
+            - selector
             type: object
           status:
             description: DeletionRuleStatus defines the observed state of DeletionRule

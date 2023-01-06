@@ -11,14 +11,14 @@ import (
 
 // TODO: change the name of the struct to Selector, see https://observability.thomasriley.co.uk/prometheus/configuring-prometheus/using-service-monitors/
 
-type Matchers struct {
-	Namespaces []string          `json:"namespaces,omitempty"`
-	Resources  []string          `json:"resources,omitempty"`
-	Names      []string          `json:"names,omitempty"`
-	Labels     map[string]string `json:"labels,omitempty"`
+type Selector struct {
+	MatchNamespaces []string          `json:"matchNamespaces,omitempty"`
+	MatchKinds      []string          `json:"matchKinds,omitempty"`
+	MatchNames      []string          `json:"matchNames,omitempty"`
+	MatchLabels     map[string]string `json:"matchLabels,omitempty"`
 }
 
-func (in *Matchers) FindMatchingResources(kubeClient client.Client) ([]unstructured.Unstructured, error) {
+func (in *Selector) FindMatchingResources(kubeClient client.Client) ([]unstructured.Unstructured, error) {
 	namespaces, err := in.findMatchingNamespaces(kubeClient)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func (in *Matchers) FindMatchingResources(kubeClient client.Client) ([]unstructu
 	return resourceList, nil
 }
 
-func (in *Matchers) findMatchingNamespaces(kubeClient client.Client) ([]string, error) {
+func (in *Selector) findMatchingNamespaces(kubeClient client.Client) ([]string, error) {
 	matchedNamespaces := make([]string, 0)
 
 	// Get all namespaces
@@ -51,7 +51,7 @@ func (in *Matchers) findMatchingNamespaces(kubeClient client.Client) ([]string, 
 
 	// Compile the matchers into regexes
 	matcherRegexps := make([]*regexp.Regexp, 0)
-	for _, matcher := range in.Namespaces {
+	for _, matcher := range in.MatchNamespaces {
 		matcherRegex, err := regexp.Compile(matcher)
 		if err != nil {
 			return nil, err
@@ -75,12 +75,12 @@ func (in *Matchers) findMatchingNamespaces(kubeClient client.Client) ([]string, 
 // findAllMatchingResourcesInNamespaces retrieves all the resources whose type matches one of the given regexps.
 // Thanks to this link for the correct approach when using unstructured objects to gather a dynamic resource type:
 // https://github.com/kubernetes-sigs/controller-runtime/issues/1823
-func (in *Matchers) findAllMatchingResourcesInNamespaces(kubeClient client.Client, namespaces []string) ([]unstructured.Unstructured, error) {
+func (in *Selector) findAllMatchingResourcesInNamespaces(kubeClient client.Client, namespaces []string) ([]unstructured.Unstructured, error) {
 	output := make([]unstructured.Unstructured, 0)
 
 	// Compile the matchers into regexes
 	matcherRegexps := make([]*regexp.Regexp, 0)
-	for _, matcher := range in.Resources {
+	for _, matcher := range in.MatchKinds {
 		matcherRegex, err := regexp.Compile(matcher)
 		if err != nil {
 			return nil, err
@@ -125,17 +125,17 @@ func (in *Matchers) findAllMatchingResourcesInNamespaces(kubeClient client.Clien
 	return output, nil
 }
 
-func (in *Matchers) filterResourcesByName(input []unstructured.Unstructured) ([]unstructured.Unstructured, error) {
+func (in *Selector) filterResourcesByName(input []unstructured.Unstructured) ([]unstructured.Unstructured, error) {
 	output := make([]unstructured.Unstructured, 0)
 
 	// Trivial case: if no matcher is defined, return all available resources
-	if len(in.Names) == 0 {
+	if len(in.MatchNames) == 0 {
 		return input, nil
 	}
 
 	// Compile the matchers into regexes
 	matcherRegexps := make([]*regexp.Regexp, 0)
-	for _, matcher := range in.Names {
+	for _, matcher := range in.MatchNames {
 		matcherRegex, err := regexp.Compile(matcher)
 		if err != nil {
 			return nil, err

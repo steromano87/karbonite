@@ -11,7 +11,7 @@ import (
 
 type DeletionAction struct {
 	Log      logr.Logger
-	Matchers []v1.Matchers
+	Selector v1.Selector
 	DryRun   bool
 }
 
@@ -22,7 +22,7 @@ func (a DeletionAction) Run(kubeClient client.Client) error {
 		a.Log.Info("Running deletion rule. This is not a drill!!!")
 	}
 
-	allMatchingResources, err := a.findMatchingResources(kubeClient)
+	allMatchingResources, err := a.Selector.FindMatchingResources(kubeClient)
 	if err != nil {
 		a.Log.Error(err, "Error retrieving matching resources")
 		return err
@@ -51,21 +51,6 @@ func (a DeletionAction) Run(kubeClient client.Client) error {
 		a.Log.Info("Resource deletion completed")
 	}
 	return nil
-}
-
-func (a DeletionAction) findMatchingResources(kubeClient client.Client) ([]unstructured.Unstructured, error) {
-	allMatchingResources := make([]unstructured.Unstructured, 0)
-
-	for _, matcher := range a.Matchers {
-		matchingResources, err := matcher.FindMatchingResources(kubeClient)
-		if err != nil {
-			return nil, err
-		}
-
-		allMatchingResources = append(allMatchingResources, matchingResources...)
-	}
-
-	return allMatchingResources, nil
 }
 
 func (a DeletionAction) deleteResources(kubeClient client.Client, targetResources []unstructured.Unstructured) error {

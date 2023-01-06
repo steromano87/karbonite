@@ -67,7 +67,6 @@ func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	reconcileLog.Info("Parsing deletion rule",
-		"matchersCount", len(deletionRule.Spec.Matchers),
 		"schedulesCount", len(deletionRule.Spec.Schedules))
 
 	// Delete any already saved schedule for te given tag (i.e. the namespaced name of the DeletionRule)
@@ -127,21 +126,16 @@ func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, re
 	reconcileLog, _ := logr.FromContext(ctx)
 
 	// If no namespace matcher is explicitly given, set it to the origin namespace
-	actionMatchers := make([]rulesv1.Matchers, len(deletionRule.Spec.Matchers))
-	copy(actionMatchers, deletionRule.Spec.Matchers)
-	for index, actionMatcher := range actionMatchers {
-		if len(actionMatcher.Namespaces) == 0 {
-			reconcileLog.Info("No explicit namespace matcher has been set, defaulting to DeletionRule namespace",
-				"namespace", req.Namespace,
-				"matcherIndex", index)
-			actionMatchers[index].Namespaces = []string{req.Namespace}
-		}
+	if len(deletionRule.Spec.Selector.MatchNamespaces) == 0 {
+		reconcileLog.Info("No explicit namespace matcher has been set, defaulting to DeletionRule namespace",
+			"namespace", req.Namespace)
+		deletionRule.Spec.Selector.MatchNamespaces = []string{req.Namespace}
 	}
 
 	for _, ruleSchedule := range deletionRule.Spec.Schedules {
 		action := schedule.DeletionAction{
 			Log:      r.Log.WithName("DeleteAction"),
-			Matchers: actionMatchers,
+			Selector: deletionRule.Spec.Selector,
 			DryRun:   deletionRule.Spec.DryRun,
 		}
 

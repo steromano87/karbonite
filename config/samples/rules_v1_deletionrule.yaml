@@ -9,8 +9,8 @@ metadata:
     app.kubernetes.io/created-by: karbonite
   name: deletionrule-sample
 spec:
-  matchers:
-    - resources:
-        - ConfigMap
+  selector:
+    matchKinds:
+      - ConfigMap
   schedules:
     - "*/1 * * * *"

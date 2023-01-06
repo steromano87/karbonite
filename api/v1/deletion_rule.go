@@ -52,8 +52,7 @@ type DeletionRuleSpec struct {
 	//+kubebuilder:default:=false
 	DryRun bool `json:"dryRun,omitempty"`
 
-	//+kubebuilder:validation:MinItems:=1
-	Matchers []Matchers `json:"matchers"`
+	Selector Selector `json:"selector"`
 
 	//+kubebuilder:validation:MinItems:=1
 	Schedules []string `json:"schedules"`

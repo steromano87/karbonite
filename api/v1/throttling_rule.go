@@ -54,7 +54,7 @@ type ThrottlingRuleSpec struct {
 	DryRun bool `json:"dryRun,omitempty"`
 
 	//+kubebuilder:validation:MinItems:=1
-	Matchers []Matchers `json:"matchers"`
+	Matchers []Selector `json:"matchers"`
 
 	//+kubebuilder:validation:MinItems:=1
 	Schedules []ThrottlingSchedule `json:"schedules"`
