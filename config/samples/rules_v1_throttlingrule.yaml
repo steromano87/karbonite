@@ -9,9 +9,11 @@ metadata:
     app.kubernetes.io/created-by: karbonite
   name: throttlingrule-sample
 spec:
-  matchers:
-    - resources:
-        - Deployment
+  enabled: false
+  dryRun: true
+  selector:
+    matchKinds:
+      - Deployment
   schedules:
     - start: "*/1 * * * *"
       desiredReplicas: 0

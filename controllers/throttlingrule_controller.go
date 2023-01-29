@@ -18,18 +18,27 @@ package controllers
 
 import (
 	"context"
+	"github.com/go-co-op/gocron"
+	"github.com/go-logr/logr"
+	"github.com/robfig/cron/v3"
 	rulesv1 "github.com/steromano87/karbonite/api/v1"
+	"github.com/steromano87/karbonite/pkg/schedule"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var throttleTag = "throttle"
 
 // ThrottlingRuleReconciler reconciles a ThrottlingRule object
 type ThrottlingRuleReconciler struct {
 	client.Client
+	Log    logr.Logger
 	Scheme *runtime.Scheme
+
+	CronScheduler *gocron.Scheduler
+	CronValidator cron.Parser
 }
 
 //+kubebuilder:rbac:groups=karbonite.io,resources=throttlingrules,verbs=get;list;watch;create;update;patch;delete
@@ -46,15 +55,133 @@ type ThrottlingRuleReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *ThrottlingRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	reconcileLog := r.Log.WithName("ThrottlingRuleReconciler").WithValues("rule", req.NamespacedName)
 
-	// TODO(user): your logic here
+	reconcileLog.Info("Running reconcile loop")
 
-	return ctrl.Result{}, nil
+	throttlingRule := &rulesv1.ThrottlingRule{}
+	err := r.Client.Get(ctx, req.NamespacedName, throttlingRule)
+	if err != nil {
+		reconcileLog.Error(err, "Error while retrieving throttling rule spec")
+		return ctrl.Result{}, err
+	}
+
+	reconcileLog.Info("Parsing throttling rule",
+		"schedulesCount", len(throttlingRule.Spec.Schedules))
+
+	// Forcefully re-enter all the active schedules to restore the original resource state
+	err = r.undoActiveThrottlingRules(logr.NewContext(ctx, reconcileLog), req.NamespacedName.String())
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Delete any already saved schedule for te given tag (i.e. the namespaced name of the DeletionRule)
+	err = r.removeExistingSchedules(logr.NewContext(ctx, reconcileLog), req.NamespacedName.String())
+	if err != nil {
+		// Do not log errors, because they are already handled in the inner function
+		return ctrl.Result{}, err
+	}
+
+	// Add the deletion schedules
+	if throttlingRule.Spec.Enabled {
+		reconcileLog.Info("Throttling rule is enabled, adding throttling cronjobs")
+		err = r.scheduleThrottlingActions(logr.NewContext(ctx, reconcileLog), req, throttlingRule)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	} else {
+		reconcileLog.Info("Throttling rule is disabled, skipping")
+		return ctrl.Result{}, nil
+	}
+
+	// Update rule by setting lastModified field
+	throttlingRule.Status.ActiveReentrantThrottles = make([]rulesv1.ActiveReentrantThrottle, 0)
+	throttlingRule.Status.RunCount = 0
+	err = r.Client.Status().Update(ctx, throttlingRule)
+	if err != nil {
+		reconcileLog.Error(err, "Error updating analyzed rule")
+	}
+
+	return ctrl.Result{}, err
+}
+
+func (r *ThrottlingRuleReconciler) undoActiveThrottlingRules(ctx context.Context, namespacedRuleName string) error {
+	// TODO: add forced run of all reentrant schedules
+	return nil
+}
+
+func (r *ThrottlingRuleReconciler) removeExistingSchedules(ctx context.Context, namespacedRuleName string) error {
+	reconcileLog, _ := logr.FromContext(ctx)
+	reconcileLog.Info("Checking for previously saved schedules to delete")
+	previouslySavedSchedules, err := r.CronScheduler.FindJobsByTag(namespacedRuleName, throttleTag)
+
+	if err != nil {
+		if err == gocron.ErrJobNotFoundWithTag {
+			reconcileLog.Info("No previously saved schedules have been found")
+			return nil
+		}
+
+		reconcileLog.Error(err, "Error while retrieving previously saved schedules")
+		return err
+	}
+
+	reconcileLog.Info("Found previously saved schedules, deleting...", "affectedItems", len(previouslySavedSchedules))
+	err = r.CronScheduler.RemoveByTags(namespacedRuleName, throttleTag)
+	if err != nil {
+		reconcileLog.Error(err, "Error while removing previously saved schedules")
+		return err
+	}
+
+	reconcileLog.Info("Successfully deleted previously saved schedules")
+	return nil
+}
+
+func (r *ThrottlingRuleReconciler) scheduleThrottlingActions(ctx context.Context, req ctrl.Request, throttlingRule *rulesv1.ThrottlingRule) error {
+	reconcileLog, _ := logr.FromContext(ctx)
+
+	// If no namespace matcher is explicitly given, set it to the origin namespace
+	if len(throttlingRule.Spec.Selector.MatchNamespaces) == 0 {
+		reconcileLog.Info("No explicit namespace matcher has been set, defaulting to ThrottlingRule namespace",
+			"namespace", req.Namespace)
+		throttlingRule.Spec.Selector.MatchNamespaces = []string{req.Namespace}
+	}
+
+	for _, ruleSchedule := range throttlingRule.Spec.Schedules {
+		action := schedule.ThrottleAction{
+			Log:                     r.Log.WithName("ThrottleAction"),
+			Selector:                throttlingRule.Spec.Selector,
+			DryRun:                  throttlingRule.Spec.DryRun,
+			ReferenceThrottlingRule: throttlingRule,
+		}
+
+		// Validate the cron expression before accepting it!
+		_, err := r.CronValidator.Parse(ruleSchedule.Start)
+		if err != nil {
+			reconcileLog.Error(err, "Error parsing cron expression")
+			return err
+		}
+
+		// Schedule the deletion action
+		scheduledAction, err := r.CronScheduler.Cron(ruleSchedule.Start).Tag(
+			req.NamespacedName.String(), throttleTag,
+		).DoWithJobDetails(action.Run, r.Client)
+		if err != nil {
+			reconcileLog.Error(err, "Error scheduling deletion job")
+			return err
+		}
+
+		scheduledAction.SingletonMode()
+		reconcileLog.Info("Added throttling cronjob", "schedule", ruleSchedule, "isDryRun", action.DryRun)
+	}
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ThrottlingRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.Log.Info("Starting throttling actions scheduler", "referenceTimezone", r.CronScheduler.Location())
+	r.CronScheduler.StartAsync()
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&rulesv1.ThrottlingRule{}).
 		WithOptions(controller.Options{

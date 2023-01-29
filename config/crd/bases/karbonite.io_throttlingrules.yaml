@@ -20,9 +20,10 @@ spec:
       jsonPath: .spec.enabled
       name: Enabled
       type: boolean
-    - description: Whether a re-entrant schedule is defined
-      jsonPath: .status.active
-      name: Active
+    - description: Whether the DeletionRule runs in dry-run mode (i.e. only logging
+        affected resources)
+      jsonPath: .spec.dryRun
+      name: Dry-run
       type: boolean
     - description: The active schedules
       jsonPath: .spec.schedules[*]
@@ -58,28 +59,6 @@ spec:
               enabled:
                 default: true
                 type: boolean
-              matchers:
-                items:
-                  properties:
-                    matchKinds:
-                      items:
-                        type: string
-                      type: array
-                    matchLabels:
-                      additionalProperties:
-                        type: string
-                      type: object
-                    matchNames:
-                      items:
-                        type: string
-                      type: array
-                    matchNamespaces:
-                      items:
-                        type: string
-                      type: array
-                  type: object
-                minItems: 1
-                type: array
               schedules:
                 items:
                   properties:
@@ -96,16 +75,59 @@ spec:
                   type: object
                 minItems: 1
                 type: array
+              selector:
+                properties:
+                  matchKinds:
+                    items:
+                      type: string
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  matchNames:
+                    items:
+                      type: string
+                    type: array
+                  matchNamespaces:
+                    items:
+                      type: string
+                    type: array
+                type: object
             required:
-            - matchers
             - schedules
+            - selector
             type: object
           status:
             description: ThrottlingRuleStatus defines the observed state of ThrottlingRule
             properties:
-              active:
-                default: false
-                type: boolean
+              activeReentrantThrottles:
+                items:
+                  properties:
+                    namespace:
+                      type: string
+                    originalReplicas:
+                      type: integer
+                    reentrantOn:
+                      format: date-time
+                      type: string
+                    resource:
+                      type: string
+                  required:
+                  - namespace
+                  - originalReplicas
+                  - reentrantOn
+                  - resource
+                  type: object
+                type: array
+              nextRun:
+                format: date-time
+                type: string
+              runCount:
+                default: 0
+                type: integer
+            required:
+            - runCount
             type: object
         type: object
     served: true

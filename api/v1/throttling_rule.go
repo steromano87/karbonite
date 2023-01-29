@@ -32,7 +32,7 @@ type ThrottlingRuleList struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Enabled",type="boolean",JSONPath=".spec.enabled",description="Whether the ThrottlingRule is enforced or not"
-//+kubebuilder:printcolumn:name="Active",type="boolean",JSONPath=".status.active",description="Whether a re-entrant schedule is defined"
+//+kubebuilder:printcolumn:name="Dry-run",type="boolean",JSONPath=".spec.dryRun",description="Whether the DeletionRule runs in dry-run mode (i.e. only logging affected resources)"
 //+kubebuilder:printcolumn:name="Schedules",type="string",priority=1,JSONPath=".spec.schedules[*]",description="The active schedules"
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
@@ -53,8 +53,7 @@ type ThrottlingRuleSpec struct {
 	//+kubebuilder:default:= false
 	DryRun bool `json:"dryRun,omitempty"`
 
-	//+kubebuilder:validation:MinItems:=1
-	Matchers []Selector `json:"matchers"`
+	Selector Selector `json:"selector"`
 
 	//+kubebuilder:validation:MinItems:=1
 	Schedules []ThrottlingSchedule `json:"schedules"`
@@ -69,8 +68,21 @@ type ThrottlingSchedule struct {
 
 // ThrottlingRuleStatus defines the observed state of ThrottlingRule
 type ThrottlingRuleStatus struct {
-	//+kubebuilder:default:=false
-	Active bool `json:"active,omitempty"`
+	NextRun metav1.Time `json:"nextRun,omitempty"`
+
+	//+kubebuilder:default:=0
+	RunCount int `json:"runCount"`
+
+	//+kubebuilder:default:={}
+	//+kubebuilder:validation:Type:=array
+	ActiveReentrantThrottles []ActiveReentrantThrottle `json:"activeReentrantThrottles,omitempty"`
+}
+
+type ActiveReentrantThrottle struct {
+	Namespace        string      `json:"namespace"`
+	Resource         string      `json:"resource"`
+	OriginalReplicas int         `json:"originalReplicas"`
+	ReentrantOn      metav1.Time `json:"reentrantOn"`
 }
 
 func init() {

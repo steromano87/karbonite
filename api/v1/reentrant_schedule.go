@@ -9,5 +9,9 @@ type ReentrantSchedule struct {
 }
 
 func (in *ReentrantSchedule) String() string {
-	return fmt.Sprintf("ReentrantSchedule [start: %s, end: %s]", in.Start, in.End)
+	if in.End != "" {
+		return fmt.Sprintf("Re-entrant Schedule [start: %s, end: %s]", in.Start, in.End)
+	} else {
+		return fmt.Sprintf("Schedule [%s]", in.Start)
+	}
 }
