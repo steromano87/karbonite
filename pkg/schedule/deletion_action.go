@@ -3,8 +3,10 @@ package schedule
 import (
 	"context"
 	"fmt"
+	"github.com/go-co-op/gocron"
 	"github.com/go-logr/logr"
 	"github.com/steromano87/karbonite/api/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -13,9 +15,11 @@ type DeletionAction struct {
 	Log      logr.Logger
 	Selector v1.Selector
 	DryRun   bool
+
+	ReferenceDeletionRule *v1.DeletionRule
 }
 
-func (a DeletionAction) Run(kubeClient client.Client) error {
+func (a DeletionAction) Run(kubeClient client.Client, job gocron.Job) error {
 	if a.DryRun {
 		a.Log.Info("Dry-running deletion rule. This is a drill!")
 	} else {
@@ -50,6 +54,15 @@ func (a DeletionAction) Run(kubeClient client.Client) error {
 		}
 		a.Log.Info("Resource deletion completed")
 	}
+
+	// Update deletion rule's status
+	a.ReferenceDeletionRule.Status.RunCount += 1
+	a.ReferenceDeletionRule.Status.NextRun = metav1.NewTime(job.NextRun())
+	err = kubeClient.Status().Update(context.Background(), a.ReferenceDeletionRule)
+	if err != nil {
+		a.Log.Error(err, "Error updating reference deletion rule", "deletionRule", a.ReferenceDeletionRule.GetName())
+	}
+
 	return nil
 }
 

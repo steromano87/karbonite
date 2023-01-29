@@ -23,12 +23,10 @@ import (
 	"github.com/robfig/cron/v3"
 	rulesv1 "github.com/steromano87/karbonite/api/v1"
 	"github.com/steromano87/karbonite/pkg/schedule"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"time"
 )
 
 // DeletionRuleReconciler reconciles a DeletionRule object
@@ -59,8 +57,8 @@ func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	reconcileLog.Info("Running reconcile loop")
 
-	deletionRule := rulesv1.DeletionRule{}
-	err := r.Client.Get(context.Background(), req.NamespacedName, &deletionRule)
+	deletionRule := &rulesv1.DeletionRule{}
+	err := r.Client.Get(ctx, req.NamespacedName, deletionRule)
 	if err != nil {
 		reconcileLog.Error(err, "Error while retrieving deletion rule spec")
 		return ctrl.Result{}, err
@@ -83,12 +81,12 @@ func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return ctrl.Result{}, err
 		}
 	} else {
-		reconcileLog.Info("Deletion rule is disable, skipping")
+		reconcileLog.Info("Deletion rule is disabled, skipping")
 	}
 
 	// Update rule by setting lastModified field
-	deletionRule.Status.LastModified = metav1.Time{Time: time.Now()}
-	err = r.Client.Update(context.Background(), &deletionRule)
+	deletionRule.Status.RunCount = 0
+	err = r.Client.Status().Update(ctx, deletionRule)
 	if err != nil {
 		reconcileLog.Error(err, "Error updating analyzed rule")
 	}
@@ -122,7 +120,7 @@ func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, jo
 	return nil
 }
 
-func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, req ctrl.Request, deletionRule rulesv1.DeletionRule) error {
+func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, req ctrl.Request, deletionRule *rulesv1.DeletionRule) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 
 	// If no namespace matcher is explicitly given, set it to the origin namespace
@@ -134,9 +132,10 @@ func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, re
 
 	for _, ruleSchedule := range deletionRule.Spec.Schedules {
 		action := schedule.DeletionAction{
-			Log:      r.Log.WithName("DeleteAction"),
-			Selector: deletionRule.Spec.Selector,
-			DryRun:   deletionRule.Spec.DryRun,
+			Log:                   r.Log.WithName("DeleteAction"),
+			Selector:              deletionRule.Spec.Selector,
+			DryRun:                deletionRule.Spec.DryRun,
+			ReferenceDeletionRule: deletionRule,
 		}
 
 		// Validate the cron expression before accepting it!
@@ -147,7 +146,7 @@ func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, re
 		}
 
 		// Schedule the deletion action
-		scheduledAction, err := r.CronScheduler.Cron(ruleSchedule).Tag(req.NamespacedName.String()).Do(action.Run, r.Client)
+		scheduledAction, err := r.CronScheduler.Cron(ruleSchedule).Tag(req.NamespacedName.String()).DoWithJobDetails(action.Run, r.Client)
 		if err != nil {
 			reconcileLog.Error(err, "Error scheduling deletion job")
 			return err

@@ -32,6 +32,7 @@ type DeletionRuleList struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Enabled",type="boolean",JSONPath=".spec.enabled",description="Whether the DeletionRule is enforced or not"
+//+kubebuilder:printcolumn:name="Dry-run",type="boolean",JSONPath=".spec.dryRun",description="Whether the DeletionRule runs in dry-run mode (i.e. only logging affected resources)"
 //+kubebuilder:printcolumn:name="Schedules",type="string",priority=1,JSONPath=".spec.schedules[*]",description="The active schedules"
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
@@ -60,7 +61,10 @@ type DeletionRuleSpec struct {
 
 // DeletionRuleStatus defines the observed state of DeletionRule
 type DeletionRuleStatus struct {
-	LastModified metav1.Time `json:"lastModified,omitempty"`
+	NextRun metav1.Time `json:"nextRun,omitempty"`
+
+	//+kubebuilder:default:=0
+	RunCount int `json:"runCount"`
 }
 
 func init() {

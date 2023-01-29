@@ -20,6 +20,11 @@ spec:
       jsonPath: .spec.enabled
       name: Enabled
       type: boolean
+    - description: Whether the DeletionRule runs in dry-run mode (i.e. only logging
+        affected resources)
+      jsonPath: .spec.dryRun
+      name: Dry-run
+      type: boolean
     - description: The active schedules
       jsonPath: .spec.schedules[*]
       name: Schedules
@@ -85,9 +90,14 @@ spec:
           status:
             description: DeletionRuleStatus defines the observed state of DeletionRule
             properties:
-              lastModified:
+              nextRun:
                 format: date-time
                 type: string
+              runCount:
+                default: 0
+                type: integer
+            required:
+            - runCount
             type: object
         type: object
     served: true
