@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"regexp"
@@ -79,7 +80,7 @@ func (in *Selector) findAllMatchingResourcesInNamespaces(kubeClient client.Clien
 	// Compile the matchers into regexes
 	matcherRegexps := make([]*regexp.Regexp, 0)
 	for _, matcher := range in.MatchKinds {
-		matcherRegex, err := regexp.Compile(matcher)
+		matcherRegex, err := regexp.Compile("(?i)" + matcher)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +89,7 @@ func (in *Selector) findAllMatchingResourcesInNamespaces(kubeClient client.Clien
 	}
 
 	// Compile the regex to verify that the matching resource kind contains the word "List" in it
-	listMatcher, _ := regexp.Compile(`.+List$`)
+	listMatcher := regexp.MustCompile(`(?i).+List$`)
 
 	// Find resource kinds that match the given regexps
 	allKnownTypes := kubeClient.Scheme().AllKnownTypes()
@@ -113,6 +114,10 @@ func (in *Selector) findAllMatchingResourcesInNamespaces(kubeClient client.Clien
 
 			err := kubeClient.List(context.Background(), &matchingResources, listOptions...)
 			if err != nil {
+				// If no match has been found, simply continue with the next type
+				if _, ok := err.(*meta.NoKindMatchError); ok {
+					continue
+				}
 				return nil, err
 			}
 
