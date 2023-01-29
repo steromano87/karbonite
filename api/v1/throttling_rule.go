@@ -53,6 +53,7 @@ type ThrottlingRuleSpec struct {
 	//+kubebuilder:default:= false
 	DryRun bool `json:"dryRun,omitempty"`
 
+	//+kubebuilder:default:={matchKinds:{Deployment,StatefulSet}}
 	Selector Selector `json:"selector"`
 
 	//+kubebuilder:validation:MinItems:=1

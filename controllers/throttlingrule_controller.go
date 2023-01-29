@@ -146,6 +146,12 @@ func (r *ThrottlingRuleReconciler) scheduleThrottlingActions(ctx context.Context
 		throttlingRule.Spec.Selector.MatchNamespaces = []string{req.Namespace}
 	}
 
+	// If no specific resource kinds are explicitly given, use both Deployments and StatefulSets
+	if len(throttlingRule.Spec.Selector.MatchKinds) == 0 {
+		reconcileLog.Info("No explicit resource kind matchers have been set, defaulting to Deployment and StatefulSet")
+		throttlingRule.Spec.Selector.MatchKinds = []string{"Deployment", "StatefulSet"}
+	}
+
 	for _, ruleSchedule := range throttlingRule.Spec.Schedules {
 		action := schedule.ThrottleAction{
 			Log:                     r.Log.WithName("ThrottleAction"),

@@ -76,6 +76,10 @@ spec:
                 minItems: 1
                 type: array
               selector:
+                default:
+                  matchKinds:
+                  - Deployment
+                  - StatefulSet
                 properties:
                   matchKinds:
                     items:
