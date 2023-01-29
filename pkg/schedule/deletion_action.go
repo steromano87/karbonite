@@ -39,8 +39,8 @@ func (a DeletionAction) Run(kubeClient client.Client, job gocron.Job) error {
 		}
 
 		a.Log.Info("The following resources would be deleted",
-			"resource count", len(allMatchingResources),
-			"resource names", resourceNames)
+			"resourceCount", len(allMatchingResources),
+			"resourceNames", resourceNames)
 	} else {
 		a.Log.Info("No matching resource has been found")
 	}
