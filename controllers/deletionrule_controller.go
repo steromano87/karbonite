@@ -29,6 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
+var deletionTag = "deletion"
+
 // DeletionRuleReconciler reconciles a DeletionRule object
 type DeletionRuleReconciler struct {
 	client.Client
@@ -94,10 +96,10 @@ func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, err
 }
 
-func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, jobTag string) error {
+func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, namespacedRuleName string) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 	reconcileLog.Info("Checking for previously saved schedules to delete")
-	previouslySavedSchedules, err := r.CronScheduler.FindJobsByTag(jobTag)
+	previouslySavedSchedules, err := r.CronScheduler.FindJobsByTag(namespacedRuleName, deletionTag)
 
 	if err != nil {
 		if err == gocron.ErrJobNotFoundWithTag {
@@ -110,7 +112,7 @@ func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, jo
 	}
 
 	reconcileLog.Info("Found previously saved schedules, deleting...", "affectedItems", len(previouslySavedSchedules))
-	err = r.CronScheduler.RemoveByTag(jobTag)
+	err = r.CronScheduler.RemoveByTags(namespacedRuleName, deletionTag)
 	if err != nil {
 		reconcileLog.Error(err, "Error while removing previously saved schedules")
 		return err
@@ -146,7 +148,10 @@ func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, re
 		}
 
 		// Schedule the deletion action
-		scheduledAction, err := r.CronScheduler.Cron(ruleSchedule).Tag(req.NamespacedName.String()).DoWithJobDetails(action.Run, r.Client)
+		scheduledAction, err := r.CronScheduler.Cron(ruleSchedule).Tag(
+			req.NamespacedName.String(), deletionTag,
+		).DoWithJobDetails(action.Run, r.Client)
+
 		if err != nil {
 			reconcileLog.Error(err, "Error scheduling deletion job")
 			return err

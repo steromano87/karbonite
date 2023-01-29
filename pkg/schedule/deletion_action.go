@@ -6,7 +6,6 @@ import (
 	"github.com/go-co-op/gocron"
 	"github.com/go-logr/logr"
 	"github.com/steromano87/karbonite/api/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -56,8 +55,7 @@ func (a DeletionAction) Run(kubeClient client.Client, job gocron.Job) error {
 	}
 
 	// Update deletion rule's status
-	a.ReferenceDeletionRule.Status.RunCount += 1
-	a.ReferenceDeletionRule.Status.NextRun = metav1.NewTime(job.NextRun())
+	a.ReferenceDeletionRule.Status.RunCount = job.RunCount()
 	err = kubeClient.Status().Update(context.Background(), a.ReferenceDeletionRule)
 	if err != nil {
 		a.Log.Error(err, "Error updating reference deletion rule", "deletionRule", a.ReferenceDeletionRule.GetName())
