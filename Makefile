@@ -1,3 +1,7 @@
+# Karbonite version
+KARBONITE_VERSION ?= 1.0.0
+KARBONITE_BIN ?= karbonite
+
 
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
@@ -62,7 +66,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: generate fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
+	CGO_ENABLED=0 go build -tags netgo -ldflags '-w -extldflags "-static"' -o $(BUILDDIR)/$(KARBONITE_BIN) main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -126,10 +130,16 @@ LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
+## Location for build direectory
+BUILDDIR ?= $(shell pwd)/build
+$(BUILDDIR):
+	mkdir -p $(BUILDDIR)
+
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+HELMIFY ?= $(LOCALBIN)/helmify
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
@@ -150,3 +160,15 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+
+## Helmify
+CHART_NAME = karbonite
+
+.PHONY: helmify
+helmify: $(HELMIFY) ## Download helmify locally if necessary
+$(HELMIFY): $(LOCALBIN)
+	test -s $(LOCALBIN)/helmify || GOBIN=$(LOCALBIN) go install github.com/arttor/helmify/cmd/helmify@v0.3.7
+
+helm-generate: $(BUILDDIR) helmify manifests kustomize
+	$(KUSTOMIZE) build config/default | $(HELMIFY) $(BUILDDIR)/chart/$(CHART_NAME)

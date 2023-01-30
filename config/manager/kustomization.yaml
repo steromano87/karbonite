@@ -1,2 +1,7 @@
 resources:
 - manager.yaml
+
+images:
+  - name: manager
+    newName: steromano87/karbonite
+    newTag: latest

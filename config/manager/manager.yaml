@@ -67,10 +67,13 @@ spec:
         #   type: RuntimeDefault
       containers:
       - command:
-        - /manager
+        - /karbonite
         args:
+        - --metrics-bind-address 8080
+        - --health-probe-bind-address 8081
         - --leader-elect
-        image: controller:latest
+        - --timezone UTC
+        image: manager:latest
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
