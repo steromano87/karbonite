@@ -66,7 +66,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: generate fmt vet ## Build manager binary.
-	CGO_ENABLED=0 go build -tags netgo -ldflags '-w -extldflags "-static"' -o $(BUILDDIR)/$(KARBONITE_BIN) main.go
+	CGO_ENABLED=0 go build -tags netgo -trimpath -ldflags '-w -s -extldflags "-static"' -o $(BUILDDIR)/$(KARBONITE_BIN) main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
