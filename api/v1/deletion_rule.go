@@ -30,10 +30,13 @@ type DeletionRuleList struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:resource:shortName=dlr
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Enabled",type="boolean",JSONPath=".spec.enabled",description="Whether the DeletionRule is enforced or not"
 //+kubebuilder:printcolumn:name="Dry-run",type="boolean",JSONPath=".spec.dryRun",description="Whether the DeletionRule runs in dry-run mode (i.e. only logging affected resources)"
 //+kubebuilder:printcolumn:name="Schedules",type="string",priority=1,JSONPath=".spec.schedules[*]",description="The active schedules"
+//+kubebuilder:printcolumn:name="Last run",type="string",format="date",JSONPath=".status.lastRun.timestamp",description="Last run date"
+//+kubebuilder:printcolumn:name="Run count",type="integer",JSONPath=".status.runCount",description="Total runs of the rule"
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // DeletionRule is the Schema for the deletionrules API

@@ -12,27 +12,38 @@ spec:
     kind: DeletionRule
     listKind: DeletionRuleList
     plural: deletionrules
+    shortNames:
+      - dlr
     singular: deletionrule
   scope: Namespaced
   versions:
     - additionalPrinterColumns:
-      - description: Whether the DeletionRule is enforced or not
-        jsonPath: .spec.enabled
-        name: Enabled
-        type: boolean
-      - description: Whether the DeletionRule runs in dry-run mode (i.e. only logging
-          affected resources)
-        jsonPath: .spec.dryRun
-        name: Dry-run
-        type: boolean
-      - description: The active schedules
-        jsonPath: .spec.schedules[*]
-        name: Schedules
-        priority: 1
-        type: string
-      - jsonPath: .metadata.creationTimestamp
-        name: Age
-        type: date
+        - description: Whether the DeletionRule is enforced or not
+          jsonPath: .spec.enabled
+          name: Enabled
+          type: boolean
+        - description: Whether the DeletionRule runs in dry-run mode (i.e. only logging
+            affected resources)
+          jsonPath: .spec.dryRun
+          name: Dry-run
+          type: boolean
+        - description: The active schedules
+          jsonPath: .spec.schedules[*]
+          name: Schedules
+          priority: 1
+          type: string
+        - description: Last run date
+          format: date
+          jsonPath: .status.lastRun.timestamp
+          name: Last run
+          type: string
+        - description: Total runs of the rule
+          jsonPath: .status.runCount
+          name: Run count
+          type: integer
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
       name: v1
       schema:
         openAPIV3Schema:

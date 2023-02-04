@@ -12,6 +12,8 @@ spec:
     kind: ThrottlingRule
     listKind: ThrottlingRuleList
     plural: throttlingrules
+    shortNames:
+    - thr
     singular: throttlingrule
   scope: Namespaced
   versions:
@@ -30,6 +32,15 @@ spec:
       name: Schedules
       priority: 1
       type: string
+    - description: Last run date
+      format: date
+      jsonPath: .status.lastRun.timestamp
+      name: Last run
+      type: string
+    - description: Total runs of the rule
+      jsonPath: .status.runCount
+      name: Run count
+      type: integer
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
