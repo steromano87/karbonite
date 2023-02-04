@@ -21,15 +21,13 @@ import (
 	"github.com/go-co-op/gocron"
 	"github.com/go-logr/logr"
 	"github.com/robfig/cron/v3"
-	rulesv1 "github.com/steromano87/karbonite/api/v1"
+	karbonitev1 "github.com/steromano87/karbonite/api/v1"
 	"github.com/steromano87/karbonite/pkg/schedule"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
-
-var throttleTag = "throttle"
 
 // ThrottlingRuleReconciler reconciles a ThrottlingRule object
 type ThrottlingRuleReconciler struct {
@@ -59,7 +57,7 @@ func (r *ThrottlingRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	reconcileLog.Info("Running reconcile loop")
 
-	throttlingRule := &rulesv1.ThrottlingRule{}
+	throttlingRule := &karbonitev1.ThrottlingRule{}
 	err := r.Client.Get(ctx, req.NamespacedName, throttlingRule)
 	if err != nil {
 		reconcileLog.Error(err, "Error while retrieving throttling rule spec")
@@ -94,8 +92,8 @@ func (r *ThrottlingRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	// Update rule by setting lastModified field
-	throttlingRule.Status.ActiveReentrantThrottles = make([]rulesv1.ActiveReentrantThrottle, 0)
+	// Update rule status
+	throttlingRule.Status.ActiveReentrantThrottles = make([]karbonitev1.ActiveReentrantThrottle, 0)
 	throttlingRule.Status.RunCount = 0
 	err = r.Client.Status().Update(ctx, throttlingRule)
 	if err != nil {
@@ -106,37 +104,44 @@ func (r *ThrottlingRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 }
 
 func (r *ThrottlingRuleReconciler) undoActiveThrottlingRules(ctx context.Context, namespacedRuleName string) error {
-	// TODO: add forced run of all reentrant schedules
+	reconcileLog, _ := logr.FromContext(ctx)
+	reconcileLog.Info("Checking for previously saved throttling revert schedules to delete")
+
+	err := r.CronScheduler.RemoveByTags(namespacedRuleName, karbonitev1.ThrottleRevertTag)
+	if err != nil {
+		if err == gocron.ErrJobNotFoundWithTag {
+			reconcileLog.Info("No previously saved throttling revert schedules have been found")
+			return nil
+		}
+
+		reconcileLog.Error(err, "Error while removing previously saved throttling revert schedules")
+		return err
+	}
+
+	reconcileLog.Info("Successfully deleted previously saved throttling revert schedules")
 	return nil
 }
 
 func (r *ThrottlingRuleReconciler) removeExistingSchedules(ctx context.Context, namespacedRuleName string) error {
 	reconcileLog, _ := logr.FromContext(ctx)
-	reconcileLog.Info("Checking for previously saved schedules to delete")
-	previouslySavedSchedules, err := r.CronScheduler.FindJobsByTag(namespacedRuleName, throttleTag)
+	reconcileLog.Info("Checking for previously saved throttling schedules to delete")
 
+	err := r.CronScheduler.RemoveByTags(namespacedRuleName, karbonitev1.ThrottleTag)
 	if err != nil {
 		if err == gocron.ErrJobNotFoundWithTag {
-			reconcileLog.Info("No previously saved schedules have been found")
+			reconcileLog.Info("No previously saved throttling schedules have been found")
 			return nil
 		}
 
-		reconcileLog.Error(err, "Error while retrieving previously saved schedules")
+		reconcileLog.Error(err, "Error while removing previously saved throttling schedules")
 		return err
 	}
 
-	reconcileLog.Info("Found previously saved schedules, deleting...", "affectedItems", len(previouslySavedSchedules))
-	err = r.CronScheduler.RemoveByTags(namespacedRuleName, throttleTag)
-	if err != nil {
-		reconcileLog.Error(err, "Error while removing previously saved schedules")
-		return err
-	}
-
-	reconcileLog.Info("Successfully deleted previously saved schedules")
+	reconcileLog.Info("Successfully deleted previously saved throttling schedules")
 	return nil
 }
 
-func (r *ThrottlingRuleReconciler) scheduleThrottlingActions(ctx context.Context, req ctrl.Request, throttlingRule *rulesv1.ThrottlingRule) error {
+func (r *ThrottlingRuleReconciler) scheduleThrottlingActions(ctx context.Context, req ctrl.Request, throttlingRule *karbonitev1.ThrottlingRule) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 
 	// If no namespace matcher is explicitly given, set it to the origin namespace
@@ -154,10 +159,13 @@ func (r *ThrottlingRuleReconciler) scheduleThrottlingActions(ctx context.Context
 
 	for _, ruleSchedule := range throttlingRule.Spec.Schedules {
 		action := schedule.ThrottleAction{
-			Log:                     r.Log.WithName("ThrottleAction"),
+			Log:                     r.Log.WithName("ThrottleAction - " + req.NamespacedName.String()),
 			Selector:                throttlingRule.Spec.Selector,
+			DesiredReplicas:         ruleSchedule.DesiredReplicas,
 			DryRun:                  throttlingRule.Spec.DryRun,
+			ReentrantSchedule:       ruleSchedule.End,
 			ReferenceThrottlingRule: throttlingRule,
+			CronScheduler:           r.CronScheduler,
 		}
 
 		// Validate the cron expression before accepting it!
@@ -169,7 +177,7 @@ func (r *ThrottlingRuleReconciler) scheduleThrottlingActions(ctx context.Context
 
 		// Schedule the deletion action
 		scheduledAction, err := r.CronScheduler.Cron(ruleSchedule.Start).Tag(
-			req.NamespacedName.String(), throttleTag,
+			req.NamespacedName.String(), karbonitev1.ThrottleTag,
 		).DoWithJobDetails(action.Run, r.Client)
 		if err != nil {
 			reconcileLog.Error(err, "Error scheduling deletion job")
@@ -189,7 +197,7 @@ func (r *ThrottlingRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.CronScheduler.StartAsync()
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&rulesv1.ThrottlingRule{}).
+		For(&karbonitev1.ThrottlingRule{}).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: 1,
 		}).

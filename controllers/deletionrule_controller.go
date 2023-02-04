@@ -21,15 +21,13 @@ import (
 	"github.com/go-co-op/gocron"
 	"github.com/go-logr/logr"
 	"github.com/robfig/cron/v3"
-	rulesv1 "github.com/steromano87/karbonite/api/v1"
+	karbonitev1 "github.com/steromano87/karbonite/api/v1"
 	"github.com/steromano87/karbonite/pkg/schedule"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
-
-var deletionTag = "deletion"
 
 // DeletionRuleReconciler reconciles a DeletionRule object
 type DeletionRuleReconciler struct {
@@ -59,7 +57,7 @@ func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	reconcileLog.Info("Running reconcile loop")
 
-	deletionRule := &rulesv1.DeletionRule{}
+	deletionRule := &karbonitev1.DeletionRule{}
 	err := r.Client.Get(ctx, req.NamespacedName, deletionRule)
 	if err != nil {
 		reconcileLog.Error(err, "Error while retrieving deletion rule spec")
@@ -99,7 +97,7 @@ func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request
 func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, namespacedRuleName string) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 	reconcileLog.Info("Checking for previously saved schedules to delete")
-	previouslySavedSchedules, err := r.CronScheduler.FindJobsByTag(namespacedRuleName, deletionTag)
+	previouslySavedSchedules, err := r.CronScheduler.FindJobsByTag(namespacedRuleName, karbonitev1.DeletionTag)
 
 	if err != nil {
 		if err == gocron.ErrJobNotFoundWithTag {
@@ -112,7 +110,7 @@ func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, na
 	}
 
 	reconcileLog.Info("Found previously saved schedules, deleting...", "affectedItems", len(previouslySavedSchedules))
-	err = r.CronScheduler.RemoveByTags(namespacedRuleName, deletionTag)
+	err = r.CronScheduler.RemoveByTags(namespacedRuleName, karbonitev1.DeletionTag)
 	if err != nil {
 		reconcileLog.Error(err, "Error while removing previously saved schedules")
 		return err
@@ -122,7 +120,7 @@ func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, na
 	return nil
 }
 
-func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, req ctrl.Request, deletionRule *rulesv1.DeletionRule) error {
+func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, req ctrl.Request, deletionRule *karbonitev1.DeletionRule) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 
 	// If no namespace matcher is explicitly given, set it to the origin namespace
@@ -149,7 +147,7 @@ func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, re
 
 		// Schedule the deletion action
 		scheduledAction, err := r.CronScheduler.Cron(ruleSchedule).Tag(
-			req.NamespacedName.String(), deletionTag,
+			req.NamespacedName.String(), karbonitev1.DeletionTag,
 		).DoWithJobDetails(action.Run, r.Client)
 
 		if err != nil {
@@ -170,7 +168,7 @@ func (r *DeletionRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.CronScheduler.StartAsync()
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&rulesv1.DeletionRule{}).
+		For(&karbonitev1.DeletionRule{}).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: 1,
 		}).

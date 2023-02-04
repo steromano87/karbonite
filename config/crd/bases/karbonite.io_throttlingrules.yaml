@@ -63,6 +63,7 @@ spec:
                 items:
                   properties:
                     desiredReplicas:
+                      minimum: 0
                       type: integer
                     end:
                       type: string
@@ -108,20 +109,36 @@ spec:
               activeReentrantThrottles:
                 items:
                   properties:
-                    namespace:
-                      type: string
-                    originalReplicas:
-                      type: integer
+                    affectedResources:
+                      items:
+                        properties:
+                          currentReplicas:
+                            minimum: 0
+                            type: integer
+                          kind:
+                            type: string
+                          namespace:
+                            type: string
+                          originalReplicas:
+                            minimum: 0
+                            type: integer
+                          resource:
+                            type: string
+                        required:
+                        - currentReplicas
+                        - kind
+                        - namespace
+                        - originalReplicas
+                        - resource
+                        type: object
+                      minItems: 1
+                      type: array
                     reentrantOn:
                       format: date-time
                       type: string
-                    resource:
-                      type: string
                   required:
-                  - namespace
-                  - originalReplicas
+                  - affectedResources
                   - reentrantOn
-                  - resource
                   type: object
                 type: array
               nextRun:
