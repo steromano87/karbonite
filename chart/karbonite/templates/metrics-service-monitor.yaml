@@ -1,0 +1,17 @@
+{{- if and .Values.serviceMonitor.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "karbonite.fullname" . }}-metrics-monitor
+  labels:
+    app.kubernetes.io/component: metrics
+    {{- include "karbonite.labels" . | nindent 4 }}
+spec:
+  endpoints:
+  - path: /metrics
+    port: metrics
+    scheme: http
+  selector:
+    matchLabels:
+      {{- include "karbonite.selectorLabels" . | nindent 6 }}
+  {{- end }}

@@ -1,0 +1,76 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "karbonite.fullname" . }}-controller-role
+  labels:
+    app.kubernetes.io/component: rbac
+    {{- include "karbonite.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - karbonite.io
+  resources:
+  - deletionrules
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - karbonite.io
+  resources:
+  - deletionrules/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - karbonite.io
+  resources:
+  - deletionrules/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - karbonite.io
+  resources:
+  - throttlingrules
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - karbonite.io
+  resources:
+  - throttlingrules/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - karbonite.io
+  resources:
+  - throttlingrules/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "karbonite.fullname" . }}-controller-rolebinding
+  labels:
+    app.kubernetes.io/component: rbac
+  {{- include "karbonite.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: '{{ include "karbonite.fullname" . }}-controller-role'
+subjects:
+- kind: ServiceAccount
+  name: {{ include "karbonite.serviceAccountName" . }}
+  namespace: '{{ .Release.Namespace }}'
