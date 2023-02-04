@@ -65,6 +65,9 @@ type DeletionRuleStatus struct {
 
 	//+kubebuilder:default:=0
 	RunCount int `json:"runCount"`
+
+	//+kubebuilder:validation:Optional
+	LastRun *LastRunInfo `json:"lastRun,omitempty"`
 }
 
 func init() {

@@ -17,9 +17,7 @@ limitations under the License.
 package v1
 
 import (
-	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 //+kubebuilder:object:root=true
@@ -76,37 +74,19 @@ type ThrottlingRuleStatus struct {
 	//+kubebuilder:default:=0
 	RunCount int `json:"runCount"`
 
-	//+kubebuilder:default:={}
-	//+kubebuilder:validation:Type:=array
-	ActiveReentrantThrottles []ActiveReentrantThrottle `json:"activeReentrantThrottles,omitempty"`
+	//+kubebuilder:validation:Optional
+	LastRun *LastRunInfo `json:"lastRun,omitempty"`
+
+	//+kubebuilder:validation:Optional
+	ActiveReentrantThrottle *ActiveReentrantThrottle `json:"activeReentrantThrottle,omitempty"`
 }
 
 type ActiveReentrantThrottle struct {
 	//+kubebuilder:validation:Type:=array
-	//+kubebuilder:validation:MinItems:=1
-	AffectedResources []AffectedResource `json:"affectedResources"`
-	ReentrantOn       metav1.Time        `json:"reentrantOn"`
-}
+	AffectedResources []AffectedResource `json:"affectedResources,omitempty"`
 
-type AffectedResource struct {
-	Namespace string `json:"namespace"`
-	Resource  string `json:"resource"`
-	Kind      string `json:"kind"`
-	//+kubebuilder:validation:Minimum:=0
-	OriginalReplicas int `json:"originalReplicas"`
-	//+kubebuilder:validation:Minimum:=0
-	CurrentReplicas int `json:"currentReplicas"`
-}
-
-func (in *AffectedResource) NamespacedName() types.NamespacedName {
-	return types.NamespacedName{
-		Namespace: in.Namespace,
-		Name:      in.Resource,
-	}
-}
-
-func (in *AffectedResource) String() string {
-	return fmt.Sprintf("%s/%s [%s]", in.Namespace, in.Resource, in.Kind)
+	//+kubebuilder:validation:Optional
+	ReentrantOn metav1.Time `json:"reentrantOn,omitempty"`
 }
 
 func init() {

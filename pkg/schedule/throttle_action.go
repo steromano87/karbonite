@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
 )
 
 type ThrottleAction struct {
@@ -73,8 +74,13 @@ func (a *ThrottleAction) Run(kubeClient client.Client, job gocron.Job) error {
 		a.Log.Error(err, "Error scheduling throttle revert")
 	}
 
-	// Update deletion rule's status
-	a.ReferenceThrottlingRule.Status.RunCount = job.RunCount()
+	// Add 1 to the run count, because it is increased only when the job has complete the function execution
+	lastRun := metav1.NewTime(time.Now())
+	a.ReferenceThrottlingRule.Status.RunCount = job.RunCount() + 1
+	a.ReferenceThrottlingRule.Status.LastRun = &karbonitev1.LastRunInfo{
+		Timestamp:         &lastRun,
+		AffectedResources: a.affectedResources,
+	}
 
 	err = kubeClient.Status().Update(context.Background(), a.ReferenceThrottlingRule)
 	if err != nil {
@@ -133,11 +139,13 @@ func (a *ThrottleAction) throttleStatefulSet(kubeClient client.Client, namespace
 	// Add affected resource only if there was a real change
 	if newReplicas != oldReplicas {
 		a.affectedResources = append(a.affectedResources, karbonitev1.AffectedResource{
-			Namespace:        namespacedName.Namespace,
-			Resource:         namespacedName.Name,
-			Kind:             statefulSetKind,
-			OriginalReplicas: int(oldReplicas),
-			CurrentReplicas:  a.DesiredReplicas,
+			Namespace: namespacedName.Namespace,
+			Resource:  namespacedName.Name,
+			Kind:      statefulSetKind,
+			ResourceScalingSpec: &karbonitev1.ResourceScalingSpec{
+				OriginalReplicas: int(oldReplicas),
+				CurrentReplicas:  a.DesiredReplicas,
+			},
 		})
 	}
 
@@ -170,11 +178,13 @@ func (a *ThrottleAction) throttleDeployment(kubeClient client.Client, namespaced
 	// Add affected resource only if there was a real change
 	if newReplicas != oldReplicas {
 		a.affectedResources = append(a.affectedResources, karbonitev1.AffectedResource{
-			Namespace:        namespacedName.Namespace,
-			Resource:         namespacedName.Name,
-			Kind:             deploymentKind,
-			OriginalReplicas: int(oldReplicas),
-			CurrentReplicas:  a.DesiredReplicas,
+			Namespace: namespacedName.Namespace,
+			Resource:  namespacedName.Name,
+			Kind:      deploymentKind,
+			ResourceScalingSpec: &karbonitev1.ResourceScalingSpec{
+				OriginalReplicas: int(oldReplicas),
+				CurrentReplicas:  a.DesiredReplicas,
+			},
 		})
 	}
 
@@ -189,32 +199,32 @@ func (a *ThrottleAction) scheduleThrottleRevertAction(kubeClient client.Client) 
 
 	if a.ReentrantSchedule != "" {
 		throttleRevertAction := ThrottleRevertAction{
-			Log:                a.Log.WithName(a.ReferenceThrottlingRule.Name),
+			Log:                a.Log.WithName("revert"),
 			SourceThrottleRule: a.ReferenceThrottlingRule,
 			AffectedResources:  a.affectedResources,
-			CronScheduler:      a.CronScheduler,
 		}
 
 		revertJobTags := []string{
 			fmt.Sprintf("%s/%s", a.ReferenceThrottlingRule.GetNamespace(), a.ReferenceThrottlingRule.GetName()),
 			karbonitev1.ThrottleRevertTag,
 		}
-		revertJob, err := a.CronScheduler.Cron(a.ReentrantSchedule).Tag(revertJobTags...).DoWithJobDetails(throttleRevertAction.Run, kubeClient)
+
+		// Add the revert job, run it only once and then remove it from the scheduler
+		revertJob, err := a.CronScheduler.Cron(a.ReentrantSchedule).Tag(revertJobTags...).LimitRunsTo(1).Do(throttleRevertAction.Run, kubeClient)
 		revertJob.SingletonMode()
 		if err != nil {
 			a.Log.Error(err, "Error scheduling throttle revert")
 			return err
 		}
 
-		a.ReferenceThrottlingRule.Status.ActiveReentrantThrottles = []karbonitev1.ActiveReentrantThrottle{
-			{
-				AffectedResources: a.affectedResources,
-				ReentrantOn:       metav1.NewTime(revertJob.NextRun()),
-			},
+		a.ReferenceThrottlingRule.Status.ActiveReentrantThrottle = &karbonitev1.ActiveReentrantThrottle{
+			AffectedResources: a.affectedResources,
+			ReentrantOn:       metav1.NewTime(revertJob.NextRun()),
 		}
 
 		a.Log.Info("Scheduled throttle revert")
 	} else {
+		a.ReferenceThrottlingRule.Status.ActiveReentrantThrottle = &karbonitev1.ActiveReentrantThrottle{}
 		a.Log.Info("No re-entrant schedule has been set, skipping throttle revert scheduling")
 	}
 

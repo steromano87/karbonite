@@ -15,132 +15,174 @@ spec:
     singular: throttlingrule
   scope: Namespaced
   versions:
-  - additionalPrinterColumns:
-    - description: Whether the ThrottlingRule is enforced or not
-      jsonPath: .spec.enabled
-      name: Enabled
-      type: boolean
-    - description: Whether the DeletionRule runs in dry-run mode (i.e. only logging
-        affected resources)
-      jsonPath: .spec.dryRun
-      name: Dry-run
-      type: boolean
-    - description: The active schedules
-      jsonPath: .spec.schedules[*]
-      name: Schedules
-      priority: 1
-      type: string
-    - jsonPath: .metadata.creationTimestamp
-      name: Age
-      type: date
-    name: v1
-    schema:
-      openAPIV3Schema:
-        description: ThrottlingRule is the Schema for the throttlingrules API
-        properties:
-          apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
+    - additionalPrinterColumns:
+      - description: Whether the ThrottlingRule is enforced or not
+        jsonPath: .spec.enabled
+        name: Enabled
+        type: boolean
+      - description: Whether the DeletionRule runs in dry-run mode (i.e. only logging
+          affected resources)
+        jsonPath: .spec.dryRun
+        name: Dry-run
+        type: boolean
+      - description: The active schedules
+        jsonPath: .spec.schedules[*]
+        name: Schedules
+        priority: 1
+        type: string
+      - jsonPath: .metadata.creationTimestamp
+        name: Age
+        type: date
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: ThrottlingRule is the Schema for the throttlingrules API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation
               of an object. Servers should convert recognized schemas to the latest
               internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-            type: string
-          kind:
-            description: 'Kind is a string value representing the REST resource this
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this
               object represents. Servers may infer this from the endpoint the client
               submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-            type: string
-          metadata:
-            type: object
-          spec:
-            description: ThrottlingRuleSpec defines the desired state of ThrottlingRule
-            properties:
-              dryRun:
-                default: false
-                type: boolean
-              enabled:
-                default: true
-                type: boolean
-              schedules:
-                items:
-                  properties:
-                    desiredReplicas:
-                      type: integer
-                    end:
-                      type: string
-                    start:
-                      description: 'TODO: write regex validator to cover all the cases'
-                      type: string
-                  required:
-                  - desiredReplicas
-                  - start
-                  type: object
-                minItems: 1
-                type: array
-              selector:
-                default:
-                  matchKinds:
-                  - Deployment
-                  - StatefulSet
-                properties:
-                  matchKinds:
-                    items:
-                      type: string
-                    type: array
-                  matchLabels:
-                    additionalProperties:
-                      type: string
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: ThrottlingRuleSpec defines the desired state of ThrottlingRule
+              properties:
+                dryRun:
+                  default: false
+                  type: boolean
+                enabled:
+                  default: true
+                  type: boolean
+                schedules:
+                  items:
+                    properties:
+                      desiredReplicas:
+                        minimum: 0
+                        type: integer
+                      end:
+                        type: string
+                      start:
+                        description: 'TODO: write regex validator to cover all the cases'
+                        type: string
+                    required:
+                      - desiredReplicas
+                      - start
                     type: object
-                  matchNames:
-                    items:
-                      type: string
-                    type: array
-                  matchNamespaces:
-                    items:
-                      type: string
-                    type: array
-                type: object
-            required:
-            - schedules
-            - selector
-            type: object
-          status:
-            description: ThrottlingRuleStatus defines the observed state of ThrottlingRule
-            properties:
-              activeReentrantThrottles:
-                items:
+                  minItems: 1
+                  type: array
+                selector:
+                  default:
+                    matchKinds:
+                      - Deployment
+                      - StatefulSet
                   properties:
-                    namespace:
-                      type: string
-                    originalReplicas:
-                      type: integer
+                    matchKinds:
+                      items:
+                        type: string
+                      type: array
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    matchNames:
+                      items:
+                        type: string
+                      type: array
+                    matchNamespaces:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+              required:
+                - schedules
+                - selector
+              type: object
+            status:
+              description: ThrottlingRuleStatus defines the observed state of ThrottlingRule
+              properties:
+                activeReentrantThrottle:
+                  properties:
+                    affectedResources:
+                      items:
+                        properties:
+                          kind:
+                            type: string
+                          namespace:
+                            type: string
+                          resource:
+                            type: string
+                          scalingSpec:
+                            properties:
+                              currentReplicas:
+                                minimum: 0
+                                type: integer
+                              originalReplicas:
+                                minimum: 0
+                                type: integer
+                            required:
+                              - currentReplicas
+                              - originalReplicas
+                            type: object
+                        required:
+                          - kind
+                          - namespace
+                          - resource
+                        type: object
+                      type: array
                     reentrantOn:
                       format: date-time
                       type: string
-                    resource:
-                      type: string
-                  required:
-                  - namespace
-                  - originalReplicas
-                  - reentrantOn
-                  - resource
                   type: object
-                type: array
-              nextRun:
-                format: date-time
-                type: string
-              runCount:
-                default: 0
-                type: integer
-            required:
-            - runCount
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
+                lastRun:
+                  properties:
+                    affectedResources:
+                      items:
+                        properties:
+                          kind:
+                            type: string
+                          namespace:
+                            type: string
+                          resource:
+                            type: string
+                          scalingSpec:
+                            properties:
+                              currentReplicas:
+                                minimum: 0
+                                type: integer
+                              originalReplicas:
+                                minimum: 0
+                                type: integer
+                            required:
+                              - currentReplicas
+                              - originalReplicas
+                            type: object
+                        required:
+                          - kind
+                          - namespace
+                          - resource
+                        type: object
+                      type: array
+                    timestamp:
+                      format: date-time
+                      type: string
+                  type: object
+                nextRun:
+                  format: date-time
+                  type: string
+                runCount:
+                  default: 0
+                  type: integer
+              required:
+                - runCount
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}

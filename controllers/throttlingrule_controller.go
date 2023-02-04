@@ -93,7 +93,6 @@ func (r *ThrottlingRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	// Update rule status
-	throttlingRule.Status.ActiveReentrantThrottles = make([]karbonitev1.ActiveReentrantThrottle, 0)
 	throttlingRule.Status.RunCount = 0
 	err = r.Client.Status().Update(ctx, throttlingRule)
 	if err != nil {

@@ -90,6 +90,39 @@ spec:
           status:
             description: DeletionRuleStatus defines the observed state of DeletionRule
             properties:
+              lastRun:
+                properties:
+                  affectedResources:
+                    items:
+                      properties:
+                        kind:
+                          type: string
+                        namespace:
+                          type: string
+                        resource:
+                          type: string
+                        scalingSpec:
+                          properties:
+                            currentReplicas:
+                              minimum: 0
+                              type: integer
+                            originalReplicas:
+                              minimum: 0
+                              type: integer
+                          required:
+                          - currentReplicas
+                          - originalReplicas
+                          type: object
+                      required:
+                      - kind
+                      - namespace
+                      - resource
+                      type: object
+                    type: array
+                  timestamp:
+                    format: date-time
+                    type: string
+                type: object
               nextRun:
                 format: date-time
                 type: string

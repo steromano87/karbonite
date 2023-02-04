@@ -3,7 +3,6 @@ package schedule
 import (
 	"context"
 	"errors"
-	"github.com/go-co-op/gocron"
 	"github.com/go-logr/logr"
 	karbonitev1 "github.com/steromano87/karbonite/api/v1"
 	v1 "k8s.io/api/apps/v1"
@@ -14,19 +13,17 @@ type ThrottleRevertAction struct {
 	Log                logr.Logger
 	SourceThrottleRule *karbonitev1.ThrottlingRule
 	AffectedResources  []karbonitev1.AffectedResource
-
-	CronScheduler *gocron.Scheduler
 }
 
-func (a ThrottleRevertAction) Run(kubeClient client.Client, job gocron.Job) error {
+func (a ThrottleRevertAction) Run(kubeClient client.Client) error {
 	a.Log.Info("Started reverting throttles", "sourceThrottlingRule", a.SourceThrottleRule.GetName())
 
 	for _, affectedResource := range a.AffectedResources {
 		a.Log.Info(
 			"Reverting throttle for affected resource",
 			"affectedResource", affectedResource,
-			"originalReplicas", affectedResource.OriginalReplicas,
-			"currentReplicas", affectedResource.CurrentReplicas,
+			"originalReplicas", affectedResource.ResourceScalingSpec.OriginalReplicas,
+			"currentReplicas", affectedResource.ResourceScalingSpec.OriginalReplicas,
 		)
 
 		var err error
@@ -34,14 +31,14 @@ func (a ThrottleRevertAction) Run(kubeClient client.Client, job gocron.Job) erro
 		case deploymentKind:
 			err = a.revertDeploymentThrottling(kubeClient, affectedResource)
 			if err != nil {
-				a.Log.Error(err, "Error while reverting throttle for Deployment", "affectedResource", affectedResource)
+				a.Log.Error(err, "Error while reverting throttle for Deployment", "affectedResource", affectedResource.String())
 				continue
 			}
 
 		case statefulSetKind:
 			err = a.revertStatefulSetThrottling(kubeClient, affectedResource)
 			if err != nil {
-				a.Log.Error(err, "Error while reverting throttle for StatefulSet", "affectedResource", affectedResource)
+				a.Log.Error(err, "Error while reverting throttle for StatefulSet", "affectedResource", affectedResource.String())
 				continue
 			}
 
@@ -55,10 +52,17 @@ func (a ThrottleRevertAction) Run(kubeClient client.Client, job gocron.Job) erro
 		}
 
 		a.Log.Info(
-			"Successfully reverted throttle for affected resource", "affectedResource", affectedResource)
+			"Successfully reverted throttle for affected resource", "affectedResource", affectedResource.String())
 	}
 
 	a.Log.Info("Throttles have been successfully reverted", "sourceThrottlingRule", a.SourceThrottleRule.GetName())
+
+	// Update throttling rule status by removing the active throttle revert entry
+	a.SourceThrottleRule.Status.ActiveReentrantThrottle = nil
+	err := kubeClient.Status().Update(context.Background(), a.SourceThrottleRule)
+	if err != nil {
+		a.Log.Error(err, "Error updating source throttling rule", "sourceThrottlingRule", a.SourceThrottleRule.GetName())
+	}
 
 	return nil
 }
@@ -71,7 +75,7 @@ func (a ThrottleRevertAction) revertDeploymentThrottling(kubeClient client.Clien
 		return err
 	}
 
-	originalReplicas := int32(affectedResource.OriginalReplicas)
+	originalReplicas := int32(affectedResource.ResourceScalingSpec.OriginalReplicas)
 	targetResource.Spec.Replicas = &originalReplicas
 
 	err = kubeClient.Update(context.Background(), targetResource)
@@ -91,7 +95,7 @@ func (a ThrottleRevertAction) revertStatefulSetThrottling(kubeClient client.Clie
 		return err
 	}
 
-	originalReplicas := int32(affectedResource.OriginalReplicas)
+	originalReplicas := int32(affectedResource.ResourceScalingSpec.OriginalReplicas)
 	targetResource.Spec.Replicas = &originalReplicas
 
 	err = kubeClient.Update(context.Background(), targetResource)

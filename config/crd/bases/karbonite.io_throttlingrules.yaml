@@ -106,41 +106,72 @@ spec:
           status:
             description: ThrottlingRuleStatus defines the observed state of ThrottlingRule
             properties:
-              activeReentrantThrottles:
-                items:
-                  properties:
-                    affectedResources:
-                      items:
-                        properties:
-                          currentReplicas:
-                            minimum: 0
-                            type: integer
-                          kind:
-                            type: string
-                          namespace:
-                            type: string
-                          originalReplicas:
-                            minimum: 0
-                            type: integer
-                          resource:
-                            type: string
-                        required:
-                        - currentReplicas
-                        - kind
-                        - namespace
-                        - originalReplicas
-                        - resource
-                        type: object
-                      minItems: 1
-                      type: array
-                    reentrantOn:
-                      format: date-time
-                      type: string
-                  required:
-                  - affectedResources
-                  - reentrantOn
-                  type: object
-                type: array
+              activeReentrantThrottle:
+                properties:
+                  affectedResources:
+                    items:
+                      properties:
+                        kind:
+                          type: string
+                        namespace:
+                          type: string
+                        resource:
+                          type: string
+                        scalingSpec:
+                          properties:
+                            currentReplicas:
+                              minimum: 0
+                              type: integer
+                            originalReplicas:
+                              minimum: 0
+                              type: integer
+                          required:
+                          - currentReplicas
+                          - originalReplicas
+                          type: object
+                      required:
+                      - kind
+                      - namespace
+                      - resource
+                      type: object
+                    type: array
+                  reentrantOn:
+                    format: date-time
+                    type: string
+                type: object
+              lastRun:
+                properties:
+                  affectedResources:
+                    items:
+                      properties:
+                        kind:
+                          type: string
+                        namespace:
+                          type: string
+                        resource:
+                          type: string
+                        scalingSpec:
+                          properties:
+                            currentReplicas:
+                              minimum: 0
+                              type: integer
+                            originalReplicas:
+                              minimum: 0
+                              type: integer
+                          required:
+                          - currentReplicas
+                          - originalReplicas
+                          type: object
+                      required:
+                      - kind
+                      - namespace
+                      - resource
+                      type: object
+                    type: array
+                  timestamp:
+                    format: date-time
+                    type: string
+                type: object
               nextRun:
                 format: date-time
                 type: string

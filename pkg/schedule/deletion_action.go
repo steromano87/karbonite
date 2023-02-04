@@ -6,8 +6,10 @@ import (
 	"github.com/go-co-op/gocron"
 	"github.com/go-logr/logr"
 	"github.com/steromano87/karbonite/api/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
 )
 
 type DeletionAction struct {
@@ -16,6 +18,8 @@ type DeletionAction struct {
 	DryRun   bool
 
 	ReferenceDeletionRule *v1.DeletionRule
+
+	affectedResources []v1.AffectedResource
 }
 
 func (a DeletionAction) Run(kubeClient client.Client, job gocron.Job) error {
@@ -25,6 +29,7 @@ func (a DeletionAction) Run(kubeClient client.Client, job gocron.Job) error {
 		a.Log.Info("Running deletion rule. This is not a drill!!!")
 	}
 
+	a.affectedResources = make([]v1.AffectedResource, 0)
 	allMatchingResources, err := a.Selector.FindMatchingResources(kubeClient)
 	if err != nil {
 		a.Log.Error(err, "Error retrieving matching resources")
@@ -54,8 +59,14 @@ func (a DeletionAction) Run(kubeClient client.Client, job gocron.Job) error {
 		a.Log.Info("Resource deletion completed")
 	}
 
-	// Update deletion rule's status
-	a.ReferenceDeletionRule.Status.RunCount = job.RunCount()
+	// Add 1 to the run count, because it is increased only when the job has complete the function execution
+	lastRun := metav1.NewTime(time.Now())
+	a.ReferenceDeletionRule.Status.RunCount = job.RunCount() + 1
+	a.ReferenceDeletionRule.Status.LastRun = &v1.LastRunInfo{
+		Timestamp:         &lastRun,
+		AffectedResources: a.affectedResources,
+	}
+
 	err = kubeClient.Status().Update(context.Background(), a.ReferenceDeletionRule)
 	if err != nil {
 		a.Log.Error(err, "Error updating reference deletion rule", "deletionRule", a.ReferenceDeletionRule.GetName())
@@ -79,6 +90,12 @@ func (a DeletionAction) deleteResources(kubeClient client.Client, targetResource
 			return err
 		}
 		a.Log.Info("Deleted resource", "resource", resourceDescriptor)
+
+		a.affectedResources = append(a.affectedResources, v1.AffectedResource{
+			Namespace: targetResource.GetNamespace(),
+			Resource:  targetResource.GetName(),
+			Kind:      targetResource.GetKind(),
+		})
 	}
 
 	return nil
