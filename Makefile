@@ -1,10 +1,10 @@
 # Karbonite version
-KARBONITE_VERSION ?= 1.0.0
+KARBONITE_VERSION ?= 0.1.0
 KARBONITE_BIN ?= karbonite
 
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= steromano/karbonite:$(KARBONITE_VERSION)
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.25.0
 
@@ -77,7 +77,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	docker build --rm -t ${IMG} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
