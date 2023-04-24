@@ -1,5 +1,5 @@
 # Karbonite version
-KARBONITE_VERSION ?= 0.1.0
+KARBONITE_VERSION ?= 0.1.0-alpha
 KARBONITE_BIN ?= karbonite
 
 
