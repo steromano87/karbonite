@@ -6,6 +6,7 @@ type: application
 maintainers:
   - name: Stefano Romanò
     email: rumix87@gmail.com
+    url: https://github.com/steromano87
 
 version: 0.1.0-alpha
 appVersion: "0.1.0-alpha"
