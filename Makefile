@@ -66,7 +66,7 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: generate fmt vet ## Build manager binary.
-	CGO_ENABLED=0 go build -tags netgo -trimpath -ldflags '-w -s -extldflags "-static"' -o $(BUILDDIR)/$(KARBONITE_BIN) main.go
+	CGO_ENABLED=0 go build -tags netgo -trimpath -ldflags '-w -s -extldflags "-static" -X "main.Version=$(KARBONITE_VERSION)"' -o $(BUILDDIR)/$(KARBONITE_BIN) main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -77,7 +77,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: test ## Build docker image with the manager.
-	docker build --rm -t ${IMG} .
+	docker build --build-arg KARBONITE_VERSION=$(KARBONITE_VERSION) --rm -t ${IMG} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -96,7 +96,7 @@ docker-buildx: test ## Build and push docker image for the manager for cross-pla
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
 	- docker buildx create --name project-v3-builder
 	docker buildx use project-v3-builder
-	- docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
+	- docker buildx build --push --build-arg KARBONITE_VERSION=$(KARBONITE_VERSION) --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
 	- docker buildx rm project-v3-builder
 	rm Dockerfile.cross
 
@@ -143,7 +143,7 @@ HELMIFY ?= $(LOCALBIN)/helmify
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
-CONTROLLER_TOOLS_VERSION ?= v0.9.2
+CONTROLLER_TOOLS_VERSION ?= v0.11.4
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
