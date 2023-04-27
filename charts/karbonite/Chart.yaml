@@ -3,5 +3,9 @@ name: karbonite
 description: Helm chart to deploy Karbonite controller
 type: application
 
+maintainers:
+  - name: Stefano Romanò
+    email: rumix87@gmail.com
+
 version: 0.1.0-alpha
 appVersion: "0.1.0-alpha"
