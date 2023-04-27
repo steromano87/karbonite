@@ -65,7 +65,7 @@ metadata:
   name: {{ include "karbonite.fullname" . }}-controller-rolebinding
   labels:
     app.kubernetes.io/component: rbac
-  {{- include "karbonite.labels" . | nindent 4 }}
+    {{- include "karbonite.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
