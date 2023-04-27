@@ -3,5 +3,5 @@ name: karbonite
 description: Helm chart to deploy Karbonite controller
 type: application
 
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.1.0-alpha
+appVersion: "0.1.0-alpha"
