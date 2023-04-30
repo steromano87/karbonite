@@ -26,6 +26,8 @@ jobs:
 
       - name: Build and push Docker image
         run: make docker-buildx
+        env:
+          KARBONITE_VERSION: "${{ github.ref_name }}"
 
   helm-push:
     needs: docker-buildx
@@ -39,8 +41,13 @@ jobs:
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
 
-      - name: Push Helm Chart to ChartMuseum
-        uses: bsord/helm-push@4.2.0
+      - name: Bump Helm chart version and appVersion to current tag
+        run: |
+          sed -i -E 's/^version: .+/version: {{ github.ref_name }}/g' charts/karbonite/Chart.yaml
+          sed -i -E 's/^appVersion: .+/appVersion: "{{ github.ref_name }}"/g' charts/karbonite/Chart.yaml
+
+      - name: Push Helm Chart to DockerHub OCI
+        uses: bsord/helm-push@4.1.0
         with:
           username: "${{ secrets.DOCKERHUB_USERNAME }}"
           password: "${{ secrets.DOCKERHUB_TOKEN }}"
