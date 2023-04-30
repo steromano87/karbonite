@@ -46,12 +46,12 @@ jobs:
           sed -i -E 's/^version: .+/version: {{ github.ref_name }}/g' charts/karbonite/Chart.yaml
           sed -i -E 's/^appVersion: .+/appVersion: "{{ github.ref_name }}"/g' charts/karbonite/Chart.yaml
 
-      - name: Push Helm Chart to DockerHub OCI
-        uses: bsord/helm-push@4.1.0
+      - name: Push Helm Chart to DockerHub OCI registry
+        uses: appany/helm-oci-chart-releaser@v0.4.0
         with:
-          username: "${{ secrets.DOCKERHUB_USERNAME }}"
-          password: "${{ secrets.DOCKERHUB_TOKEN }}"
-          registry-url: 'oci://registry-1.docker.io/steromano'
-          useOCIRegistry: true
-          force: true
-          chart-folder: charts
+          name: karbonite
+          repository: steromano
+          tag: "${{ github.ref_name }}"
+          registry: registry-1.docker.io
+          registry_username: "${{ secrets.DOCKERHUB_USERNAME }}"
+          registry_password: "${{ secrets.DOCKERHUB_TOKEN }}"
