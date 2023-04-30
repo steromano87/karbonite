@@ -43,8 +43,8 @@ jobs:
 
       - name: Bump Helm chart version and appVersion to current tag
         run: |
-          sed -i -E 's/^version: .+/version: {{ github.ref_name }}/g' charts/karbonite/Chart.yaml
-          sed -i -E 's/^appVersion: .+/appVersion: "{{ github.ref_name }}"/g' charts/karbonite/Chart.yaml
+          sed -i -E 's/^version: .+/version: ${{ github.ref_name }}/g' charts/karbonite/Chart.yaml
+          sed -i -E 's/^appVersion: .+/appVersion: "${{ github.ref_name }}"/g' charts/karbonite/Chart.yaml
 
       - name: Push Helm Chart to DockerHub OCI registry
         uses: appany/helm-oci-chart-releaser@v0.4.0
