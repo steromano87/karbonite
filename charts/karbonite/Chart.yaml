@@ -10,3 +10,31 @@ maintainers:
 
 version: 0.1.0-alpha
 appVersion: "0.1.0-alpha"
+
+annotations:
+  artifacthub.io/category: networking
+  artifacthub.io/images: |
+    - name: karbonite
+      image: steromano/karbonite:0.1.0-alpha
+      platforms:
+        - linux/amd64
+        - linux/arm64
+        - linux/s390x
+        - linux/ppc64le
+  artifacthub.io/operator: "true"
+  artifacthub.io/operatorCapabilities: Basic Install
+  artifacthub.io/prerelease: "true"
+  artifacthub.io/links: |
+    - name: GitHub
+      url: https://github.com/steromano87/karbonite
+  artifacthub.io/crds: |
+    - kind: DeletionRule
+      version: v1
+      name: deletionrule
+      displayName: DeletionRule
+      description: Rule for scheduled resources deletion
+    - kind: ThrottlingRule
+      version: v1
+      name: throttlingrule
+      displayName: ThrottlingRule
+      description: Rule for scheduled resources up/down scaling
