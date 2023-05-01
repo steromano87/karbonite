@@ -52,6 +52,7 @@ jobs:
           name: karbonite-helm
           repository: steromano
           tag: "${{ github.ref_name }}"
+          path: charts/karbonite
           registry: registry-1.docker.io
           registry_username: "${{ secrets.DOCKERHUB_USERNAME }}"
           registry_password: "${{ secrets.DOCKERHUB_TOKEN }}"
