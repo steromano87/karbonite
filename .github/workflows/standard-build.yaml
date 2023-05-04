@@ -1,4 +1,4 @@
-name: Go and Docker Build
+name: Standard Build
 
 on:
   push:
