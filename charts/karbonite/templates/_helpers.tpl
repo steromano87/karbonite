@@ -56,3 +56,17 @@ Create the name of the service account to use
 {{- define "karbonite.serviceAccountName" -}}
 {{- default (include "karbonite.fullname" .) .Values.serviceAccount.name }}
 {{- end }}
+
+{{/*
+Create the name of the controller clusterrole (and of its clusterrolebinding)
+*/}}
+{{- define "karbonite.controller.clusterrole" -}}
+{{- printf "%s-controller" (include "karbonite.fullname" .) }}
+{{- end }}
+
+{{/*
+Create the name of the leader election role (and of its rolebinding)
+*/}}
+{{- define "karbonite.leaderelection.role" -}}
+{{- printf "%s-leader-election" (include "karbonite.fullname" .) }}
+{{- end }}

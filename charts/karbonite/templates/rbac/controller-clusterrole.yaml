@@ -1,0 +1,76 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "karbonite.controller.clusterrole" . }}
+  labels:
+    app.kubernetes.io/component: rbac
+    {{- include "karbonite.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - karbonite.io
+    resources:
+      - deletionrules
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - karbonite.io
+    resources:
+      - deletionrules/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - karbonite.io
+    resources:
+      - deletionrules/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - karbonite.io
+    resources:
+      - throttlingrules
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - karbonite.io
+    resources:
+      - throttlingrules/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - karbonite.io
+    resources:
+      - throttlingrules/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - "*"
+    resources:
+      - "*"
+    verbs:
+      - get
+      - list
+      - watch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - deployments
+      - statefulsets
+    verbs:
+      - update
