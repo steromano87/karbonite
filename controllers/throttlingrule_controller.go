@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-co-op/gocron"
 	"github.com/go-logr/logr"
 	"github.com/robfig/cron/v3"
@@ -142,9 +143,9 @@ func (r *ThrottlingRuleReconciler) scheduleThrottlingActions(ctx context.Context
 
 	// If no namespace matcher is explicitly given, set it to the origin namespace
 	if len(throttlingRule.Spec.Selector.MatchNamespaces) == 0 {
-		reconcileLog.Info("No explicit namespace matcher has been set, defaulting to ThrottlingRule namespace",
+		reconcileLog.Info("No explicit namespace matcher has been set, defaulting to ThrottlingRule namespace exact matcher",
 			"namespace", req.Namespace)
-		throttlingRule.Spec.Selector.MatchNamespaces = []string{req.Namespace}
+		throttlingRule.Spec.Selector.MatchNamespaces = []string{fmt.Sprintf("^%s$", req.Namespace)}
 	}
 
 	// If no specific resource kinds are explicitly given, use both Deployments and StatefulSets

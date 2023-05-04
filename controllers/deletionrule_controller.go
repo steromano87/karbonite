@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-co-op/gocron"
 	"github.com/go-logr/logr"
 	"github.com/robfig/cron/v3"
@@ -122,9 +123,9 @@ func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, re
 
 	// If no namespace matcher is explicitly given, set it to the origin namespace
 	if len(deletionRule.Spec.Selector.MatchNamespaces) == 0 {
-		reconcileLog.Info("No explicit namespace matcher has been set, defaulting to DeletionRule namespace",
+		reconcileLog.Info("No explicit namespace matcher has been set, defaulting to DeletionRule namespace exact matcher",
 			"namespace", req.Namespace)
-		deletionRule.Spec.Selector.MatchNamespaces = []string{req.Namespace}
+		deletionRule.Spec.Selector.MatchNamespaces = []string{fmt.Sprintf("^%s$", req.Namespace)}
 	}
 
 	for _, ruleSchedule := range deletionRule.Spec.Schedules {
