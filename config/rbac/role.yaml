@@ -5,6 +5,22 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - deployments
+  - statefulsets
+  verbs:
+  - update
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
   - karbonite.io
   resources:
   - deletionrules
