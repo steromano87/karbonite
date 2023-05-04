@@ -16,6 +16,7 @@ type DeletionAction struct {
 	Log      logr.Logger
 	Selector v1.Selector
 	DryRun   bool
+	Timeout  time.Duration
 
 	ReferenceDeletionRule *v1.DeletionRule
 
@@ -23,14 +24,19 @@ type DeletionAction struct {
 }
 
 func (a DeletionAction) Run(kubeClient client.Client, job gocron.Job) error {
+	var startMessage string
 	if a.DryRun {
-		a.Log.Info("Dry-running deletion rule. This is a drill!")
+		startMessage = "Dry-running deletion rule. This is a drill!"
 	} else {
-		a.Log.Info("Running deletion rule. This is not a drill!!!")
+		startMessage = "Running deletion rule. This is not a drill!!!"
 	}
 
+	ctx, cancelFunc := context.WithTimeout(context.Background(), a.Timeout)
+	defer cancelFunc()
+	a.Log.Info(startMessage, "timeout", a.Timeout)
+
 	a.affectedResources = make([]v1.AffectedResource, 0)
-	allMatchingResources, err := a.Selector.FindMatchingResources(kubeClient)
+	allMatchingResources, err := a.Selector.FindMatchingResources(ctx, kubeClient)
 	if err != nil {
 		a.Log.Error(err, "Error retrieving matching resources")
 		return err
@@ -52,14 +58,14 @@ func (a DeletionAction) Run(kubeClient client.Client, job gocron.Job) error {
 
 	if !a.DryRun {
 		a.Log.Info("Resource deletion started")
-		err := a.deleteResources(kubeClient, allMatchingResources)
+		err := a.deleteResources(ctx, kubeClient, allMatchingResources)
 		if err != nil {
 			return err
 		}
 		a.Log.Info("Resource deletion completed")
 	}
 
-	// Add 1 to the run count, because it is increased only when the job has complete the function execution
+	// Add 1 to the run count, because it is increased only when the job has completed the function execution
 	lastRun := metav1.NewTime(time.Now())
 	a.ReferenceDeletionRule.Status.RunCount = job.RunCount() + 1
 	a.ReferenceDeletionRule.Status.LastRun = &v1.LastRunInfo{
@@ -67,7 +73,7 @@ func (a DeletionAction) Run(kubeClient client.Client, job gocron.Job) error {
 		AffectedResources: a.affectedResources,
 	}
 
-	err = kubeClient.Status().Update(context.Background(), a.ReferenceDeletionRule)
+	err = kubeClient.Status().Update(ctx, a.ReferenceDeletionRule)
 	if err != nil {
 		a.Log.Error(err, "Error updating reference deletion rule", "deletionRule", a.ReferenceDeletionRule.GetName())
 	}
@@ -75,7 +81,7 @@ func (a DeletionAction) Run(kubeClient client.Client, job gocron.Job) error {
 	return nil
 }
 
-func (a DeletionAction) deleteResources(kubeClient client.Client, targetResources []unstructured.Unstructured) error {
+func (a DeletionAction) deleteResources(ctx context.Context, kubeClient client.Client, targetResources []unstructured.Unstructured) error {
 	for _, targetResource := range targetResources {
 		resourceDescriptor := fmt.Sprintf("%s/%s [%s]",
 			targetResource.GetNamespace(), targetResource.GetName(), targetResource.GetKind())
@@ -84,7 +90,7 @@ func (a DeletionAction) deleteResources(kubeClient client.Client, targetResource
 			client.GracePeriodSeconds(30),
 		}
 
-		err := kubeClient.Delete(context.Background(), &targetResource, deleteOptions...)
+		err := kubeClient.Delete(ctx, &targetResource, deleteOptions...)
 		if err != nil {
 			a.Log.Error(err, "Error while deleting resource", "resource", resourceDescriptor)
 			return err

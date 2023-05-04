@@ -43,6 +43,8 @@ spec:
             - {{ .Values.controller.allowLeaderElection | quote }}
             - --timezone
             - {{ .Values.controller.defaultTimezone | quote }}
+            - --scheduled-jobs-timeout
+            - {{ .Values.controller.scheduledJobsTimeout | quote }}
 
           ports:
             - name: metrics

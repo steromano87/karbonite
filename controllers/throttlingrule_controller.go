@@ -28,6 +28,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"time"
 )
 
 // ThrottlingRuleReconciler reconciles a ThrottlingRule object
@@ -36,8 +37,9 @@ type ThrottlingRuleReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 
-	CronScheduler *gocron.Scheduler
-	CronValidator cron.Parser
+	CronScheduler        *gocron.Scheduler
+	CronValidator        cron.Parser
+	ScheduledJobsTimeout time.Duration
 }
 
 //+kubebuilder:rbac:groups=karbonite.io,resources=throttlingrules,verbs=get;list;watch;create;update;patch;delete

@@ -21,6 +21,7 @@ type ThrottleAction struct {
 	DesiredReplicas   int
 	DryRun            bool
 	ReentrantSchedule string
+	Timeout           time.Duration
 
 	ReferenceThrottlingRule *karbonitev1.ThrottlingRule
 
@@ -30,14 +31,19 @@ type ThrottleAction struct {
 }
 
 func (a *ThrottleAction) Run(kubeClient client.Client, job gocron.Job) error {
+	var startMessage string
 	if a.DryRun {
-		a.Log.Info("Dry-running throttling rule. This is a drill!")
+		startMessage = "Dry-running throttling rule. This is a drill!"
 	} else {
-		a.Log.Info("Running throttling rule. This is not a drill!!!")
+		startMessage = "Running throttling rule. This is not a drill!!!"
 	}
 
+	ctx, cancelFunc := context.WithTimeout(context.Background(), a.Timeout)
+	defer cancelFunc()
+	a.Log.Info(startMessage, "timeout", a.Timeout)
+
 	a.affectedResources = make([]karbonitev1.AffectedResource, 0)
-	allMatchingResources, err := a.Selector.FindMatchingResources(kubeClient)
+	allMatchingResources, err := a.Selector.FindMatchingResources(ctx, kubeClient)
 	if err != nil {
 		a.Log.Error(err, "Error retrieving matching resources")
 		return err
@@ -61,7 +67,7 @@ func (a *ThrottleAction) Run(kubeClient client.Client, job gocron.Job) error {
 
 	if !a.DryRun {
 		a.Log.Info("Resource throttling started")
-		err := a.throttleResources(kubeClient, allMatchingResources)
+		err := a.throttleResources(ctx, kubeClient, allMatchingResources)
 		if err != nil {
 			return err
 		}
@@ -74,7 +80,7 @@ func (a *ThrottleAction) Run(kubeClient client.Client, job gocron.Job) error {
 		a.Log.Error(err, "Error scheduling throttle revert")
 	}
 
-	// Add 1 to the run count, because it is increased only when the job has complete the function execution
+	// Add 1 to the run count, because it is increased only when the job has completed the function execution
 	lastRun := metav1.NewTime(time.Now())
 	a.ReferenceThrottlingRule.Status.RunCount = job.RunCount() + 1
 	a.ReferenceThrottlingRule.Status.LastRun = &karbonitev1.LastRunInfo{
@@ -82,7 +88,7 @@ func (a *ThrottleAction) Run(kubeClient client.Client, job gocron.Job) error {
 		AffectedResources: a.affectedResources,
 	}
 
-	err = kubeClient.Status().Update(context.Background(), a.ReferenceThrottlingRule)
+	err = kubeClient.Status().Update(ctx, a.ReferenceThrottlingRule)
 	if err != nil {
 		a.Log.Error(err, "Error updating reference throttling rule", "throttlingRule", a.ReferenceThrottlingRule.GetName())
 	}
@@ -90,7 +96,7 @@ func (a *ThrottleAction) Run(kubeClient client.Client, job gocron.Job) error {
 	return nil
 }
 
-func (a *ThrottleAction) throttleResources(kubeClient client.Client, targetResources []unstructured.Unstructured) error {
+func (a *ThrottleAction) throttleResources(ctx context.Context, kubeClient client.Client, targetResources []unstructured.Unstructured) error {
 	var err error
 
 	for _, rawResource := range targetResources {
@@ -98,9 +104,9 @@ func (a *ThrottleAction) throttleResources(kubeClient client.Client, targetResou
 
 		switch rawResource.GetKind() {
 		case statefulSetKind:
-			err = a.throttleStatefulSet(kubeClient, namespacedName)
+			err = a.throttleStatefulSet(ctx, kubeClient, namespacedName)
 		case deploymentKind:
-			err = a.throttleDeployment(kubeClient, namespacedName)
+			err = a.throttleDeployment(ctx, kubeClient, namespacedName)
 		default:
 			err = errors.New(fmt.Sprintf("unmanaged type %s for resource %s", rawResource.GetKind(), namespacedName))
 		}
@@ -113,9 +119,9 @@ func (a *ThrottleAction) throttleResources(kubeClient client.Client, targetResou
 	return nil
 }
 
-func (a *ThrottleAction) throttleStatefulSet(kubeClient client.Client, namespacedName types.NamespacedName) error {
+func (a *ThrottleAction) throttleStatefulSet(ctx context.Context, kubeClient client.Client, namespacedName types.NamespacedName) error {
 	statefulSet := &v1.StatefulSet{}
-	err := kubeClient.Get(context.Background(), namespacedName, statefulSet)
+	err := kubeClient.Get(ctx, namespacedName, statefulSet)
 	if err != nil {
 		a.Log.Error(err, "Error retrieving StatefulSet", "name", namespacedName.String())
 		return err
@@ -124,7 +130,7 @@ func (a *ThrottleAction) throttleStatefulSet(kubeClient client.Client, namespace
 	newReplicas := int32(a.DesiredReplicas)
 	oldReplicas := *statefulSet.Spec.Replicas
 	statefulSet.Spec.Replicas = &newReplicas
-	err = kubeClient.Update(context.Background(), statefulSet)
+	err = kubeClient.Update(ctx, statefulSet)
 	if err != nil {
 		a.Log.Error(err, "Error scaling StatefulSet", "name", namespacedName.String(), "desiredReplicas", a.DesiredReplicas)
 		return err
@@ -152,9 +158,9 @@ func (a *ThrottleAction) throttleStatefulSet(kubeClient client.Client, namespace
 	return nil
 }
 
-func (a *ThrottleAction) throttleDeployment(kubeClient client.Client, namespacedName types.NamespacedName) error {
+func (a *ThrottleAction) throttleDeployment(ctx context.Context, kubeClient client.Client, namespacedName types.NamespacedName) error {
 	deployment := &v1.Deployment{}
-	err := kubeClient.Get(context.Background(), namespacedName, deployment)
+	err := kubeClient.Get(ctx, namespacedName, deployment)
 	if err != nil {
 		a.Log.Error(err, "Error retrieving Deployment", "name", namespacedName.String())
 		return err
@@ -163,7 +169,7 @@ func (a *ThrottleAction) throttleDeployment(kubeClient client.Client, namespaced
 	newReplicas := int32(a.DesiredReplicas)
 	oldReplicas := *deployment.Spec.Replicas
 	deployment.Spec.Replicas = &newReplicas
-	err = kubeClient.Update(context.Background(), deployment)
+	err = kubeClient.Update(ctx, deployment)
 	if err != nil {
 		a.Log.Error(err, "Error scaling Deployment", "name", namespacedName.String(), "desiredReplicas", a.DesiredReplicas)
 		return err
@@ -201,6 +207,7 @@ func (a *ThrottleAction) scheduleThrottleRevertAction(kubeClient client.Client) 
 		throttleRevertAction := ThrottleRevertAction{
 			Log:                a.Log.WithName("revert"),
 			SourceThrottleRule: a.ReferenceThrottlingRule,
+			Timeout:            a.Timeout,
 			AffectedResources:  a.affectedResources,
 		}
 

@@ -7,15 +7,20 @@ import (
 	karbonitev1 "github.com/steromano87/karbonite/api/v1"
 	v1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
 )
 
 type ThrottleRevertAction struct {
 	Log                logr.Logger
+	Timeout            time.Duration
 	SourceThrottleRule *karbonitev1.ThrottlingRule
 	AffectedResources  []karbonitev1.AffectedResource
 }
 
 func (a ThrottleRevertAction) Run(kubeClient client.Client) error {
+	ctx, cancelFunc := context.WithTimeout(context.Background(), a.Timeout)
+	defer cancelFunc()
+
 	a.Log.Info("Started reverting throttles", "sourceThrottlingRule", a.SourceThrottleRule.GetName())
 
 	for _, affectedResource := range a.AffectedResources {
@@ -24,19 +29,20 @@ func (a ThrottleRevertAction) Run(kubeClient client.Client) error {
 			"affectedResource", affectedResource,
 			"originalReplicas", affectedResource.ResourceScalingSpec.OriginalReplicas,
 			"currentReplicas", affectedResource.ResourceScalingSpec.OriginalReplicas,
+			"timeout", a.Timeout,
 		)
 
 		var err error
 		switch affectedResource.Kind {
 		case deploymentKind:
-			err = a.revertDeploymentThrottling(kubeClient, affectedResource)
+			err = a.revertDeploymentThrottling(ctx, kubeClient, affectedResource)
 			if err != nil {
 				a.Log.Error(err, "Error while reverting throttle for Deployment", "affectedResource", affectedResource.String())
 				continue
 			}
 
 		case statefulSetKind:
-			err = a.revertStatefulSetThrottling(kubeClient, affectedResource)
+			err = a.revertStatefulSetThrottling(ctx, kubeClient, affectedResource)
 			if err != nil {
 				a.Log.Error(err, "Error while reverting throttle for StatefulSet", "affectedResource", affectedResource.String())
 				continue
@@ -59,7 +65,7 @@ func (a ThrottleRevertAction) Run(kubeClient client.Client) error {
 
 	// Update throttling rule status by removing the active throttle revert entry
 	a.SourceThrottleRule.Status.ActiveReentrantThrottle = nil
-	err := kubeClient.Status().Update(context.Background(), a.SourceThrottleRule)
+	err := kubeClient.Status().Update(ctx, a.SourceThrottleRule)
 	if err != nil {
 		a.Log.Error(err, "Error updating source throttling rule", "sourceThrottlingRule", a.SourceThrottleRule.GetName())
 	}
@@ -67,9 +73,9 @@ func (a ThrottleRevertAction) Run(kubeClient client.Client) error {
 	return nil
 }
 
-func (a ThrottleRevertAction) revertDeploymentThrottling(kubeClient client.Client, affectedResource karbonitev1.AffectedResource) error {
+func (a ThrottleRevertAction) revertDeploymentThrottling(ctx context.Context, kubeClient client.Client, affectedResource karbonitev1.AffectedResource) error {
 	targetResource := &v1.Deployment{}
-	err := kubeClient.Get(context.Background(), affectedResource.NamespacedName(), targetResource)
+	err := kubeClient.Get(ctx, affectedResource.NamespacedName(), targetResource)
 	if err != nil {
 		a.Log.Error(err, "Cannot find resource", "affectedResource", affectedResource)
 		return err
@@ -78,7 +84,7 @@ func (a ThrottleRevertAction) revertDeploymentThrottling(kubeClient client.Clien
 	originalReplicas := int32(affectedResource.ResourceScalingSpec.OriginalReplicas)
 	targetResource.Spec.Replicas = &originalReplicas
 
-	err = kubeClient.Update(context.Background(), targetResource)
+	err = kubeClient.Update(ctx, targetResource)
 	if err != nil {
 		a.Log.Error(err, "Cannot modify resource replicas", "affectedResource", affectedResource)
 		return err
@@ -87,9 +93,9 @@ func (a ThrottleRevertAction) revertDeploymentThrottling(kubeClient client.Clien
 	return nil
 }
 
-func (a ThrottleRevertAction) revertStatefulSetThrottling(kubeClient client.Client, affectedResource karbonitev1.AffectedResource) error {
+func (a ThrottleRevertAction) revertStatefulSetThrottling(ctx context.Context, kubeClient client.Client, affectedResource karbonitev1.AffectedResource) error {
 	targetResource := &v1.StatefulSet{}
-	err := kubeClient.Get(context.Background(), affectedResource.NamespacedName(), targetResource)
+	err := kubeClient.Get(ctx, affectedResource.NamespacedName(), targetResource)
 	if err != nil {
 		a.Log.Error(err, "Cannot find resource", "affectedResource", affectedResource)
 		return err
@@ -98,7 +104,7 @@ func (a ThrottleRevertAction) revertStatefulSetThrottling(kubeClient client.Clie
 	originalReplicas := int32(affectedResource.ResourceScalingSpec.OriginalReplicas)
 	targetResource.Spec.Replicas = &originalReplicas
 
-	err = kubeClient.Update(context.Background(), targetResource)
+	err = kubeClient.Update(ctx, targetResource)
 	if err != nil {
 		a.Log.Error(err, "Cannot modify resource replicas", "affectedResource", affectedResource)
 		return err

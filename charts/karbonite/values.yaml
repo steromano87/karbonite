@@ -35,6 +35,7 @@ securityContext:
 controller:
   allowLeaderElection: true
   defaultTimezone: UTC
+  scheduledJobsTimeout: 2m
   metricsPort: 8080
   healthcheckPort: 8081
 

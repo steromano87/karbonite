@@ -63,13 +63,34 @@ func main() {
 	var enableLeaderElection bool
 	var probeAddr uint
 	var timeZoneName string
+	var scheduledJobsTimeout time.Duration
 
-	flag.UintVar(&metricsAddr, "metrics-bind-address", 8080, "The address the metric endpoint binds to.")
-	flag.UintVar(&probeAddr, "health-probe-bind-address", 8081, "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&timeZoneName, "timezone", "UTC", "The reference timezone for schedules")
+	flag.UintVar(&metricsAddr,
+		"metrics-bind-address",
+		8080,
+		"The address the metric endpoint binds to.",
+	)
+	flag.UintVar(&probeAddr,
+		"health-probe-bind-address",
+		8081,
+		"The address the probe endpoint binds to.",
+	)
+	flag.BoolVar(&enableLeaderElection,
+		"leader-elect",
+		false,
+		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.",
+	)
+	flag.StringVar(&timeZoneName,
+		"timezone",
+		"UTC",
+		"The reference timezone for schedules",
+	)
+	flag.DurationVar(&scheduledJobsTimeout,
+		"scheduled-jobs-timeout",
+		2*time.Minute,
+		"The timeout for scheduled jobs to complete. If a job does not finish withing the specified timeout, the job is canceled",
+	)
+
 	opts := zap.Options{
 		Development: true,
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
@@ -132,6 +153,7 @@ func main() {
 		CronScheduler: gocron.NewScheduler(timeZone),
 		CronValidator: cron.NewParser(
 			cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor),
+		ScheduledJobsTimeout: scheduledJobsTimeout,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ThrottlingRule")
 		os.Exit(1)
@@ -144,6 +166,7 @@ func main() {
 		CronScheduler: gocron.NewScheduler(timeZone),
 		CronValidator: cron.NewParser(
 			cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor),
+		ScheduledJobsTimeout: scheduledJobsTimeout,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DeletionRule")
 		os.Exit(1)
