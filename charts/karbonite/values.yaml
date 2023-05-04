@@ -12,8 +12,8 @@ nameOverride: ""
 fullnameOverride: ""
 
 serviceAccount:
-  annotations: {}
   name: ""
+  annotations: {}
 
 serviceMonitor:
   enabled: true
