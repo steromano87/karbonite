@@ -110,7 +110,14 @@ func (in *Selector) findAllMatchingResourcesInNamespaces(ctx context.Context, ku
 		for _, namespace := range namespaces {
 			matchingResources := unstructured.UnstructuredList{}
 			matchingResources.SetGroupVersionKind(matchingType)
-			listOptions := []client.ListOption{client.InNamespace(namespace)}
+
+			listOptions := make([]client.ListOption, 0)
+			listOptions = append(listOptions, client.InNamespace(namespace))
+
+			// If the matchLabel field is not empty, use it
+			if len(in.MatchLabels) > 0 {
+				listOptions = append(listOptions, client.MatchingLabels(in.MatchLabels))
+			}
 
 			err := kubeClient.List(ctx, &matchingResources, listOptions...)
 			if err != nil {
