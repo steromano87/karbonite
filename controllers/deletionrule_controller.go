@@ -135,6 +135,7 @@ func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, re
 			Log:                   r.Log.WithName("DeleteAction"),
 			Selector:              deletionRule.Spec.Selector,
 			DryRun:                deletionRule.Spec.DryRun,
+			Timeout:               r.ScheduledJobsTimeout,
 			ReferenceDeletionRule: deletionRule,
 		}
 
