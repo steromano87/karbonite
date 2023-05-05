@@ -162,6 +162,7 @@ func (r *ThrottlingRuleReconciler) scheduleThrottlingActions(ctx context.Context
 			Selector:                throttlingRule.Spec.Selector,
 			DesiredReplicas:         ruleSchedule.DesiredReplicas,
 			DryRun:                  throttlingRule.Spec.DryRun,
+			Timeout:                 r.ScheduledJobsTimeout,
 			ReentrantSchedule:       ruleSchedule.End,
 			ReferenceThrottlingRule: throttlingRule,
 			CronScheduler:           r.CronScheduler,
