@@ -23,10 +23,22 @@ jobs:
           languages: go
           queries: security-and-quality
 
-      - name: Setup Golang with cache
-        uses: magnetikonline/action-golang-cache@v4
+      - name: Setup Golang
+        uses: actions/setup-go@v4
         with:
           go-version-file: go.mod
+          cache: false
+
+      - name: Load Golang build cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+            bin
+          key: ${{ runner.os }}-golang-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-golang-
 
       - name: Build
         run: make build
