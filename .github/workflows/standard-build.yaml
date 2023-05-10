@@ -11,6 +11,8 @@ on:
 jobs:
   go-build:
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -19,6 +21,7 @@ jobs:
         uses: github/codeql-action/init@v2
         with:
           languages: go
+          queries: security-and-quality
 
       - name: Setup Golang with cache
         uses: magnetikonline/action-golang-cache@v4
