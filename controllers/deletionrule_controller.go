@@ -165,7 +165,11 @@ func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, re
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *DeletionRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.Log.Info("Starting deletion actions scheduler", "referenceTimezone", r.CronScheduler.Location())
+	r.Log.Info(
+		"Starting deletion actions scheduler",
+		"referenceTimezone", r.CronScheduler.Location(),
+		"scheduledJobsTimeout", r.ScheduledJobsTimeout.String(),
+	)
 	r.CronScheduler.StartAsync()
 
 	return ctrl.NewControllerManagedBy(mgr).
