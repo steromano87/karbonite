@@ -87,7 +87,7 @@ func main() {
 	)
 	flag.DurationVar(&scheduledJobsTimeout,
 		"scheduled-jobs-timeout",
-		2*time.Minute,
+		5*time.Minute,
 		"The timeout for scheduled jobs to complete. If a job does not finish withing the specified timeout, the job is canceled",
 	)
 
