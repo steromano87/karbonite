@@ -35,16 +35,11 @@ spec:
           command:
             - /karbonite
           args:
-            - --metrics-bind-address
-            - {{ .Values.controller.metricsPort | quote }}
-            - --health-probe-bind-address
-            - {{ .Values.controller.healthcheckPort | quote }}
-            - --leader-elect
-            - {{ .Values.controller.allowLeaderElection | quote }}
-            - --timezone
-            - {{ .Values.controller.defaultTimezone | quote }}
-            - --scheduled-jobs-timeout
-            - {{ .Values.controller.scheduledJobsTimeout | quote }}
+            - -metrics-bind-address={{ .Values.controller.metricsPort }}
+            - -health-probe-bind-address={{ .Values.controller.healthcheckPort }}
+            - -leader-elect={{ .Values.controller.allowLeaderElection }}
+            - -timezone={{ .Values.controller.defaultTimezone }}
+            - -scheduled-jobs-timeout={{ .Values.controller.scheduledJobsTimeout }}
 
           ports:
             - name: metrics
