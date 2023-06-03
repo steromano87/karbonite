@@ -45,7 +45,7 @@ jobs:
         run: |
           sed -i -E 's/^version: .+/version: ${{ github.ref_name }}/g' charts/karbonite/Chart.yaml
           sed -i -E 's/^appVersion: .+/appVersion: "${{ github.ref_name }}"/g' charts/karbonite/Chart.yaml
-          sed -i -E 's/^image: steromano\/karbonite:.+/image: steromano\/karbonite:${{ github.ref_name }}/g' charts/karbonite/Chart.yaml
+          sed -i -E 's/image: steromano\/karbonite:.+/image: steromano\/karbonite:${{ github.ref_name }}/g' charts/karbonite/Chart.yaml
 
       - name: Publish Helm Chart
         uses: appany/helm-oci-chart-releaser@v0.4.0
