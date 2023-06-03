@@ -118,6 +118,8 @@ func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	return ctrl.Result{}, err
 }
 
+// runFinalizerCleanupActivities cleans up all the existing schedules for a given rule by deleting all the scheduled cronjobs
+// that match the rule name
 func (r *DeletionRuleReconciler) runFinalizerCleanupActivities(ctx context.Context, deletionRule *karbonitev1.DeletionRule, req ctrl.Request) (ctrl.Result, error) {
 	reconcileLog, _ := logr.FromContext(ctx)
 
@@ -147,6 +149,7 @@ func (r *DeletionRuleReconciler) runFinalizerCleanupActivities(ctx context.Conte
 	return ctrl.Result{}, nil
 }
 
+// removeExistingSchedules removes all the existing schedules that match the rule name and the deletion rule tag
 func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, namespacedRuleName string) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 	reconcileLog.Info("Checking for previously saved schedules to delete")
@@ -173,6 +176,8 @@ func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, na
 	return nil
 }
 
+// scheduleDeletionActions creates the schedules to delete the matching resources.
+// The matching resources are evaluated at runtime when the scheduled job runs.
 func (r *DeletionRuleReconciler) scheduleDeletionActions(ctx context.Context, req ctrl.Request, deletionRule *karbonitev1.DeletionRule) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 

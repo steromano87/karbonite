@@ -126,6 +126,9 @@ func (r *ThrottlingRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{}, err
 }
 
+// runFinalizerCleanupActivities cleans up all the existing schedules for a given rule before the deletion by:
+//   - deleting all the scheduled cronjobs
+//   - force the revert jobs to run immediately
 func (r *ThrottlingRuleReconciler) runFinalizerCleanupActivities(ctx context.Context, throttlingRule *karbonitev1.ThrottlingRule, req ctrl.Request) (ctrl.Result, error) {
 	reconcileLog, _ := logr.FromContext(ctx)
 
@@ -160,6 +163,7 @@ func (r *ThrottlingRuleReconciler) runFinalizerCleanupActivities(ctx context.Con
 	return ctrl.Result{}, nil
 }
 
+// undoActiveThrottlingRules forces the throttle revert actions that match the rule name to run immediately
 func (r *ThrottlingRuleReconciler) undoActiveThrottlingRules(ctx context.Context, namespacedRuleName string) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 	reconcileLog.Info("Checking for previously saved throttling revert schedules to delete")
@@ -179,6 +183,7 @@ func (r *ThrottlingRuleReconciler) undoActiveThrottlingRules(ctx context.Context
 	return nil
 }
 
+// removeExistingSchedules deletes all the throttling schedules that match the rule name and the throttling rule tag
 func (r *ThrottlingRuleReconciler) removeExistingSchedules(ctx context.Context, namespacedRuleName string) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 	reconcileLog.Info("Checking for previously saved throttling schedules to delete")
@@ -198,6 +203,8 @@ func (r *ThrottlingRuleReconciler) removeExistingSchedules(ctx context.Context, 
 	return nil
 }
 
+// scheduleThrottlingActions creates the schedules that throttle te matching resources.
+// The matching resources are evaluated at runtime when the scheduled job runs.
 func (r *ThrottlingRuleReconciler) scheduleThrottlingActions(ctx context.Context, req ctrl.Request, throttlingRule *karbonitev1.ThrottlingRule) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 
