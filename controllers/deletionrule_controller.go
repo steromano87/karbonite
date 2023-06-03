@@ -28,8 +28,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"time"
 )
+
+const deletionRuleFinalizer = "karbonite.io/deletionrule-finalizer"
 
 // DeletionRuleReconciler reconciles a DeletionRule object
 type DeletionRuleReconciler struct {
@@ -60,8 +63,29 @@ func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	deletionRule := &karbonitev1.DeletionRule{}
 	err := r.Client.Get(ctx, req.NamespacedName, deletionRule)
 	if err != nil {
-		reconcileLog.Error(err, "Error while retrieving deletion rule spec")
-		return ctrl.Result{}, err
+		if client.IgnoreNotFound(err) == nil {
+			reconcileLog.Info("The requested resource was not found (deletion in progress?), skipping")
+		} else {
+			reconcileLog.Error(err, "Error while retrieving deletion rule spec")
+		}
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// Handle finalizer
+	if deletionRule.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted, so the finalizer is registered
+		if !controllerutil.ContainsFinalizer(deletionRule, deletionRuleFinalizer) {
+			reconcileLog.Info("Registering finalizer", "finalizer", deletionRuleFinalizer)
+			controllerutil.AddFinalizer(deletionRule, deletionRuleFinalizer)
+			if err := r.Client.Update(ctx, deletionRule); err != nil {
+				r.Log.Error(err, "Error while registering finalizer")
+				return ctrl.Result{}, err
+			}
+			reconcileLog.Info("Finalizer registered", "finalizer", deletionRuleFinalizer)
+		}
+	} else {
+		reconcileLog.Info("Throttling rule is being deleted, starting termination reconciliation")
+		return r.runFinalizerCleanupActivities(logr.NewContext(ctx, reconcileLog), deletionRule, req)
 	}
 
 	reconcileLog.Info("Parsing deletion rule",
@@ -92,6 +116,35 @@ func (r *DeletionRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	return ctrl.Result{}, err
+}
+
+func (r *DeletionRuleReconciler) runFinalizerCleanupActivities(ctx context.Context, deletionRule *karbonitev1.DeletionRule, req ctrl.Request) (ctrl.Result, error) {
+	reconcileLog, _ := logr.FromContext(ctx)
+
+	// The objects is being deleted, so perform the cleanup...
+	if controllerutil.ContainsFinalizer(deletionRule, deletionRuleFinalizer) {
+		reconcileLog.Info("Finalizer registered, running cleanup activities before deletion", "finalizer", deletionRuleFinalizer)
+
+		// Delete any already saved schedule for te given tag (i.e. the namespaced name of the DeletionRule)
+		err := r.removeExistingSchedules(logr.NewContext(ctx, reconcileLog), req.NamespacedName.String())
+		if err != nil {
+			// Do not log errors, because they are already handled in the inner function
+			return ctrl.Result{}, err
+		}
+
+		// ... and remove the finalizer
+		reconcileLog.Info("Cleanup activities completed, de-registering finalizer", "finalizer", deletionRuleFinalizer)
+		controllerutil.RemoveFinalizer(deletionRule, deletionRuleFinalizer)
+		if err := r.Client.Update(ctx, deletionRule); err != nil {
+			r.Log.Error(err, "Error while removing finalizer")
+			return ctrl.Result{}, err
+		}
+		reconcileLog.Info("Finalizer deregistered")
+	}
+
+	// Stop reconciliation, because the rule is being deleted
+	reconcileLog.Info("Termination reconciliation completed")
+	return ctrl.Result{}, nil
 }
 
 func (r *DeletionRuleReconciler) removeExistingSchedules(ctx context.Context, namespacedRuleName string) error {
