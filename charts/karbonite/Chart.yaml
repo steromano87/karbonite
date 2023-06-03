@@ -38,3 +38,27 @@ annotations:
       name: throttlingrule
       displayName: ThrottlingRule
       description: Rule for scheduled resources up/down scaling
+  artifacthub.io/crdsExamples: |
+    - apiVersion: karbonite.io/v1
+      kind: DeletionRule
+      metadata:
+        name: deletionrule-sample
+      spec:
+        selector:
+          matchKinds:
+            - ConfigMap
+        schedules:
+          - "*/1 * * * *"
+    - apiVersion: karbonite.io/v1
+      kind: ThrottlingRule
+      metadata:
+        name: throttlingrule-sample
+      spec:
+        enabled: false
+        dryRun: true
+        selector:
+          matchKinds:
+            - Deployment
+        schedules:
+          - start: "*/1 * * * *"
+            desiredReplicas: 0
