@@ -21,7 +21,10 @@ jobs:
         uses: github/codeql-action/init@v2
         with:
           languages: go
-          queries: security-and-quality
+          config: |
+            queries:
+              - uses: security-extended
+              - uses: security-and-quality
 
       - name: Setup Golang
         uses: actions/setup-go@v4
