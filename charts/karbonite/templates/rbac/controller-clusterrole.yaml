@@ -68,7 +68,7 @@ rules:
       - watch
       - delete
   - apiGroups:
-      - ""
+      - apps
     resources:
       - deployments
       - statefulsets
