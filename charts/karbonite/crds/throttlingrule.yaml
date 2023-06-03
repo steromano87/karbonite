@@ -1,22 +1,20 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: deletionrules.karbonite.io
-  labels:
-    {{- include "karbonite.labels" . | nindent 4 }}
+  name: throttlingrules.karbonite.io
 spec:
   group: karbonite.io
   names:
-    kind: DeletionRule
-    listKind: DeletionRuleList
-    plural: deletionrules
+    kind: ThrottlingRule
+    listKind: ThrottlingRuleList
+    plural: throttlingrules
     shortNames:
-      - dlr
-    singular: deletionrule
+      - thr
+    singular: throttlingrule
   scope: Namespaced
   versions:
     - additionalPrinterColumns:
-        - description: Whether the DeletionRule is enforced or not
+        - description: Whether the ThrottlingRule is enforced or not
           jsonPath: .spec.enabled
           name: Enabled
           type: boolean
@@ -45,7 +43,7 @@ spec:
       name: v1
       schema:
         openAPIV3Schema:
-          description: DeletionRule is the Schema for the deletionrules API
+          description: ThrottlingRule is the Schema for the throttlingrules API
           properties:
             apiVersion:
               description: 'APIVersion defines the versioned schema of this representation
@@ -60,7 +58,7 @@ spec:
             metadata:
               type: object
             spec:
-              description: DeletionRuleSpec defines the desired state of DeletionRule
+              description: ThrottlingRuleSpec defines the desired state of ThrottlingRule
               properties:
                 dryRun:
                   default: false
@@ -70,10 +68,26 @@ spec:
                   type: boolean
                 schedules:
                   items:
-                    type: string
+                    properties:
+                      desiredReplicas:
+                        minimum: 0
+                        type: integer
+                      end:
+                        type: string
+                      start:
+                        description: 'TODO: write regex validator to cover all the cases'
+                        type: string
+                    required:
+                      - desiredReplicas
+                      - start
+                    type: object
                   minItems: 1
                   type: array
                 selector:
+                  default:
+                    matchKinds:
+                      - Deployment
+                      - StatefulSet
                   properties:
                     matchKinds:
                       items:
@@ -97,8 +111,41 @@ spec:
                 - selector
               type: object
             status:
-              description: DeletionRuleStatus defines the observed state of DeletionRule
+              description: ThrottlingRuleStatus defines the observed state of ThrottlingRule
               properties:
+                activeReentrantThrottle:
+                  properties:
+                    affectedResources:
+                      items:
+                        properties:
+                          kind:
+                            type: string
+                          namespace:
+                            type: string
+                          resource:
+                            type: string
+                          scalingSpec:
+                            properties:
+                              currentReplicas:
+                                minimum: 0
+                                type: integer
+                              originalReplicas:
+                                minimum: 0
+                                type: integer
+                            required:
+                              - currentReplicas
+                              - originalReplicas
+                            type: object
+                        required:
+                          - kind
+                          - namespace
+                          - resource
+                        type: object
+                      type: array
+                    reentrantOn:
+                      format: date-time
+                      type: string
+                  type: object
                 lastRun:
                   properties:
                     affectedResources:
