@@ -28,8 +28,11 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"time"
 )
+
+const throttlingRuleFinalizer = "karbonite.io/throttlingrule-finalizer"
 
 // ThrottlingRuleReconciler reconciles a ThrottlingRule object
 type ThrottlingRuleReconciler struct {
@@ -60,8 +63,29 @@ func (r *ThrottlingRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	throttlingRule := &karbonitev1.ThrottlingRule{}
 	err := r.Client.Get(ctx, req.NamespacedName, throttlingRule)
 	if err != nil {
-		reconcileLog.Error(err, "Error while retrieving throttling rule spec")
-		return ctrl.Result{}, err
+		if client.IgnoreNotFound(err) == nil {
+			reconcileLog.Info("The requested resource was not found (deletion in progress?), skipping")
+		} else {
+			reconcileLog.Error(err, "Error while retrieving throttling rule spec")
+		}
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// Handle finalizer
+	if throttlingRule.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted, so the finalizer is registered
+		if !controllerutil.ContainsFinalizer(throttlingRule, throttlingRuleFinalizer) {
+			reconcileLog.Info("Registering finalizer", "finalizer", throttlingRuleFinalizer)
+			controllerutil.AddFinalizer(throttlingRule, throttlingRuleFinalizer)
+			if err := r.Client.Update(ctx, throttlingRule); err != nil {
+				r.Log.Error(err, "Error while registering finalizer")
+				return ctrl.Result{}, err
+			}
+			reconcileLog.Info("Finalizer registered", "finalizer", throttlingRuleFinalizer)
+		}
+	} else {
+		reconcileLog.Info("Throttling rule is being deleted, starting termination reconciliation")
+		return r.runFinalizerCleanupActivities(logr.NewContext(ctx, reconcileLog), throttlingRule, req)
 	}
 
 	reconcileLog.Info("Parsing throttling rule",
@@ -102,6 +126,44 @@ func (r *ThrottlingRuleReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{}, err
 }
 
+// runFinalizerCleanupActivities cleans up all the existing schedules for a given rule before the deletion by:
+//   - deleting all the scheduled cronjobs
+//   - force the revert jobs to run immediately
+func (r *ThrottlingRuleReconciler) runFinalizerCleanupActivities(ctx context.Context, throttlingRule *karbonitev1.ThrottlingRule, req ctrl.Request) (ctrl.Result, error) {
+	reconcileLog, _ := logr.FromContext(ctx)
+
+	// The objects is being deleted, so perform the cleanup...
+	if controllerutil.ContainsFinalizer(throttlingRule, throttlingRuleFinalizer) {
+		reconcileLog.Info("Finalizer registered, running cleanup activities before deletion", "finalizer", throttlingRuleFinalizer)
+		// Forcefully re-enter all the active schedules to restore the original resource state
+		err := r.undoActiveThrottlingRules(logr.NewContext(ctx, reconcileLog), req.NamespacedName.String())
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		// Delete any already saved schedule for te given tag (i.e. the namespaced name of the DeletionRule)
+		err = r.removeExistingSchedules(logr.NewContext(ctx, reconcileLog), req.NamespacedName.String())
+		if err != nil {
+			// Do not log errors, because they are already handled in the inner function
+			return ctrl.Result{}, err
+		}
+
+		// ... and remove the finalizer
+		reconcileLog.Info("Cleanup activities completed, de-registering finalizer", "finalizer", throttlingRuleFinalizer)
+		controllerutil.RemoveFinalizer(throttlingRule, throttlingRuleFinalizer)
+		if err := r.Client.Update(ctx, throttlingRule); err != nil {
+			r.Log.Error(err, "Error while removing finalizer")
+			return ctrl.Result{}, err
+		}
+		reconcileLog.Info("Finalizer deregistered")
+	}
+
+	// Stop reconciliation, because the rule is being deleted
+	reconcileLog.Info("Termination reconciliation completed")
+	return ctrl.Result{}, nil
+}
+
+// undoActiveThrottlingRules forces the throttle revert actions that match the rule name to run immediately
 func (r *ThrottlingRuleReconciler) undoActiveThrottlingRules(ctx context.Context, namespacedRuleName string) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 	reconcileLog.Info("Checking for previously saved throttling revert schedules to delete")
@@ -121,6 +183,7 @@ func (r *ThrottlingRuleReconciler) undoActiveThrottlingRules(ctx context.Context
 	return nil
 }
 
+// removeExistingSchedules deletes all the throttling schedules that match the rule name and the throttling rule tag
 func (r *ThrottlingRuleReconciler) removeExistingSchedules(ctx context.Context, namespacedRuleName string) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 	reconcileLog.Info("Checking for previously saved throttling schedules to delete")
@@ -140,6 +203,8 @@ func (r *ThrottlingRuleReconciler) removeExistingSchedules(ctx context.Context, 
 	return nil
 }
 
+// scheduleThrottlingActions creates the schedules that throttle te matching resources.
+// The matching resources are evaluated at runtime when the scheduled job runs.
 func (r *ThrottlingRuleReconciler) scheduleThrottlingActions(ctx context.Context, req ctrl.Request, throttlingRule *karbonitev1.ThrottlingRule) error {
 	reconcileLog, _ := logr.FromContext(ctx)
 
